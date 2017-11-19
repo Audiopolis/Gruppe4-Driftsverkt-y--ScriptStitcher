@@ -14,7 +14,8 @@
     Public RoutinesTab As RoutineBrowser
     Public TasksTab As TaskBrowser
 
-    Public ActiveTemplateName As String
+    Public ActiveTemplate As TemplateEntry
+    Public PSEngine As New PSExecutionEngine
 
     Public GarbageBinName As String = "Garbage Bin"
     ' TODO: Remove header resource and use Header.Height instead of My.Resources.Header.Height
@@ -30,5 +31,9 @@
         Dim SubTitleRect As New Rectangle(New Point(TitleRect.Left + 3, TitleRect.Bottom), SubTitleSize)
         Return {TitleRect, SubTitleRect}
     End Function
-
+    Public Sub SetActiveTemplate(Template As TemplateEntry)
+        ActiveTemplate = Template
+        OverviewTab.Labels(1).SetStatusText(ActiveTemplate.Name)
+        AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(ApplicationPath & "\Data\Config.txt", New String() {"$template: %name%==" & ActiveTemplate.Name}), Nothing, Nothing) ' TODO: Load on startup
+    End Sub
 End Module

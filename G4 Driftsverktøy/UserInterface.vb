@@ -6,7 +6,7 @@ Imports System.Threading
 Imports AudiopoLib
 Imports G4_Driftsverktøy
 
-Module UserInterface
+Public Module UserInterface
 
 
     Public Class TaskBrowser
@@ -382,6 +382,7 @@ Module UserInterface
         'Private WithEvents TasksInRoutine As New TasksInRoutineList
         Private NameItem, DescriptionItem, ScriptItem As ComponentViewItem
         Private CategoryItem As CategoryComponentViewItem
+        Private PathItem As ComponentViewItem
         'Private WithEvents TaskPicker As New TaskPicker
         Public Event TaskChanged(Sender As Object, e As CurrentComponentChangedEventArgs)
         Public Event ChangesSaved(Sender As Object, e As CurrentComponentChangedEventArgs)
@@ -456,6 +457,7 @@ Module UserInterface
                     NameItem.Info = VarCurrentTask.GetShortFilePath
                     DescriptionItem.Content = VarCurrentTask.Description
                     CategoryItem.Content = VarCurrentTask.CategoryName
+                    PathItem.Content = VarCurrentTask.ScriptPath
                     'For Each Item As TasksInRoutineListItem In TasksInRoutine.Items
                     '    RemoveHandler Item.RemoveClicked, AddressOf RemoveClicked
                     '    RemoveHandler Item.EditClicked, AddressOf EditClicked
@@ -501,18 +503,6 @@ Module UserInterface
                 .BackColor = BackColor
                 .Parent = Me
             End With
-            'With varLoadingSurface
-            '    .Size = New Size(40, 40)
-            '    .Location = New Point((Width - .Width) \ 2, (Height - .Height) \ 2)
-            '    .Parent = Me
-            '    .Hide()
-            '    .SendToBack()
-            'End With
-            'varLoadingGraphics = New LoadingGraphics(Of PictureBox)(varLoadingSurface)
-            'With varLoadingGraphics
-            '    .Stroke = 3
-            '    .Pen.Color = Color.White
-            'End With
             NameItem = New ComponentViewItem(PropertiesList.ListContainer)
             With NameItem
                 .EditErrorMessage = "A task with this name already exists. Please choose another name."
@@ -545,6 +535,15 @@ Module UserInterface
                 'AddHandler .ContentChanged, AddressOf ContentChanged
                 AddHandler .DragStarted, AddressOf CategoryItem_DragStarted
                 AddHandler .DragEventHappened, AddressOf CategoryItem_DragEventHappened
+            End With
+            PathItem = New ComponentViewItem(PropertiesList.ListContainer)
+            With PathItem
+                .Location = New Point(0, CategoryItem.Bottom)
+                .Size = New Size(Width - 40, 80)
+                .Title = "Script"
+                .Content = "No task selected"
+                .AddAction(My.Resources.OpenFileLocationIconDefault, My.Resources.OpenFileLocationIconHover, AddressOf BrowseScripts)
+                AddHandler .ContentChanged, AddressOf ContentChanged
             End With
             Dim CancelAcceptButtonsSize As New Size(2 * 64, 64)
             Dim CancelAcceptButtonsRect As New Rectangle(New Point((Width - CancelAcceptButtonsSize.Width) \ 2, Height - CancelAcceptButtonsSize.Height), CancelAcceptButtonsSize)
@@ -610,6 +609,16 @@ Module UserInterface
             'End With
             CurrentTask = Nothing
             Me.Parent = Parent
+        End Sub
+        Private Sub BrowseScripts(Info As Object)
+            Using FileDialog As New OpenFileDialog()
+                FileDialog.InitialDirectory = ApplicationPath & "\Data\Scripts"
+                FileDialog.Filter = "PowerShell scripts|*.ps1"
+                FileDialog.Title = "Select a script"
+                If FileDialog.ShowDialog() = DialogResult.OK AndAlso FileDialog.FileName <> Nothing AndAlso IO.File.Exists(FileDialog.FileName) Then
+                    PathItem.Content = FileDialog.FileName
+                End If
+            End Using
         End Sub
         Private Sub DeleteTask_Clicked(Sender As Object, e As EventArgs)
             If MsgBox("Are you sure you want to delete this task?", MsgBoxStyle.OkCancel, "Confirm deletion of task") = MsgBoxResult.Ok Then
@@ -724,6 +733,7 @@ Module UserInterface
                     .Name = NameItem.Content
                     .Description = DescriptionItem.Content
                     .CategoryName = CategoryItem.Content
+                    .ScriptPath = PathItem.Content
                     ' TODO: Add other properties
                 End With
                 Dim NewFullPath As String = VarCurrentTask.GetFullFilePath
@@ -1591,8 +1601,6 @@ Module UserInterface
                     AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(NewFullPath, CurrentRoutine.OutputFileContents), AddressOf OverwriteFinished, Nothing)
                 End If
             End If
-
-
             'Dim SenderButton As PictureBox = DirectCast(Sender, PictureBox)
             'If ReferenceEquals(SenderButton, CancelButton) Then
             '    If VerifyDiscard() Then CurrentTemplate = Loader.LookupTemplate(varCurrentTemplate.Name)
@@ -2607,7 +2615,7 @@ Module UserInterface
                     Dim TemplateName As String = IO.Path.GetFileNameWithoutExtension(Files(i))
                     'If Loader.LookupTemplate(TemplateName) Is Nothing Then Loader.AddTemplate(Files(i))
                     Dim NewItem As New ScrollableListLabel With {.Value = New ScrollableListLabelValue(TemplateName)}
-                    If TemplateName = ActiveTemplateName Then NewItem.IsActive = True
+                    If ActiveTemplate IsNot Nothing AndAlso TemplateName = ActiveTemplate.Name Then NewItem.IsActive = True
                     TemplateList.Add(NewItem)
                 Next
             End If
@@ -2650,7 +2658,7 @@ Module UserInterface
             If e.Data.Active Then
                 Dim SenderItem As ScrollableListLabel = DirectCast(e.SenderItem, ScrollableListLabel)
                 TemplateList.SetAllActive(False, SenderItem.Index)
-                ActiveTemplateName = SenderItem.Value.Text
+                SetActiveTemplate(Loader.LookupTemplate(SenderItem.Value.Text))
             End If
         End Sub
     End Class
@@ -3401,6 +3409,9 @@ Module UserInterface
             MyBase.OnPaint(e)
             With e.Graphics
                 .FillRectangle(GradientBrush, New Rectangle(New Point(0, 0), New Size(Width, Height)))
+                TextRenderer.DrawText(e.Graphics, Title, Parent.StaticLabelFont(ListElementFontSize.Large), varTitleRect.Location, varForeColor)
+                TextRenderer.DrawText(e.Graphics, Content, Parent.StatusLabelFont(ListElementFontSize.Regular), varContentRect.Location, varForeColor)
+                TextRenderer.DrawText(e.Graphics, Info, Parent.EditButtonFont(ListElementFontSize.Small), varInfoRect.Location, varForeColor)
                 If Actions.Count > 0 Then
                     OpacityBrush.Color = varIconsAreaColor
                     .FillRectangle(OpacityBrush, IconsRect)
@@ -3422,9 +3433,6 @@ Module UserInterface
                 '.FillRectangle(PatternBrush, New Rectangle(New Point(0, Height - SeparatorThickness), New Size(Width - IconsRect.Width + CoverWidth, SeparatorThickness)))
                 .DrawLine(LinePen, New Point(0, Height - 1), New Point(Width - IconsRect.Width + CoverWidth, Height - 1))
             End With
-            TextRenderer.DrawText(e.Graphics, Title, Parent.StaticLabelFont(ListElementFontSize.Large), varTitleRect.Location, varForeColor)
-            TextRenderer.DrawText(e.Graphics, Content, Parent.StatusLabelFont(ListElementFontSize.Regular), varContentRect.Location, varForeColor)
-            TextRenderer.DrawText(e.Graphics, Info, Parent.EditButtonFont(ListElementFontSize.Small), varInfoRect.Location, varForeColor)
         End Sub
         Protected Overrides Sub OnMouseEnter(e As EventArgs)
             MyBase.OnMouseEnter(e)
@@ -4180,7 +4188,7 @@ Module UserInterface
         End Property
         Public Overrides ReadOnly Property DefaultValue As ScrollableListItemValue
             Get
-                Return New RoutinesInScheduleListItemValue(New RoutineInformation("Empty", 10, RoutineInformation.RoutineDateInterval.Days, False))
+                Return New RoutinesInScheduleListItemValue(New RoutineInformation("Empty", 10, RoutineInformation.RoutineDateInterval.Days, False, "Never"))
             End Get
         End Property
         Public Property RunEvery As Integer
@@ -4307,7 +4315,7 @@ Module UserInterface
         Private Sub OnArgumentRemoved(e As ArgumentRemovedEventArgs)
             Value.Information.Arguments.Remove(e.SenderItem.Value.Argument)
             ArgumentsList.Remove(e.SenderItem)
-            OnValueChanged(New ValueChangedEventArgs(value))
+            OnValueChanged(New ValueChangedEventArgs(Value))
             RaiseEvent ArgumentRemoved(Me, e)
         End Sub
         Public Sub New()
@@ -4364,6 +4372,10 @@ Module UserInterface
                 For Each Arg As Object In Value.Information.Arguments
                     ArgumentsList.Add(New ArgumentsListItem(ArgumentsList, New ArgumentsListItemValue(Arg)))
                 Next
+                If Arguments.Contains("$PREVIOUS") AndAlso Not Value.Information.WaitForPrevious Then
+                    Value.Information.WaitForPrevious = True
+                    OnValueChanged(New ValueChangedEventArgs(Value))
+                End If
             End If
         End Sub
         Protected Overrides Function GetTextLocation() As Point
@@ -4770,8 +4782,8 @@ Module UserInterface
                 Dim Y As Integer = (Height - .Height - ResourceHeight) \ 2 + ResourceHeight
                 .Location = New Point(X, Y)
             End With
-            Labels.Add(New ListElement(Me, "Status", "Running"))
-            Labels.Last.AddEditButton("Stop", AddressOf StartStopService, False)
+            Labels.Add(New ListElement(Me, "Status", "Paused"))
+            Labels.Last.AddEditButton("Start", AddressOf StartStopService, True)
             Labels.Add(New ListElement(Me, "Template", "SomeTemplate"))
             Labels.Last.AddEditButton("Change", AddressOf ChangeTemplate, Nothing)
 
@@ -4782,7 +4794,11 @@ Module UserInterface
             For i As Integer = 0 To ShortcutRects.Count - 1
                 ShortcutRects(i) = New Rectangle(New Point(PicsRect.X + i * (32 + PicSpacing), PicsRect.Top), New Size(32, 32))
             Next
+            AddHandler PSEngine.Paused, AddressOf PSEngine_Paused
             Invalidate()
+        End Sub
+        Private Sub PSEngine_Paused(Sender As Object, e As ExecutionPausedEventArgs)
+            Labels(0).SetStatusText("Paused")
         End Sub
         Protected Overrides Sub OnSizeChanged(e As EventArgs)
             MyBase.OnSizeChanged(e)
@@ -4890,14 +4906,16 @@ Module UserInterface
 #Region "Click actions"
         Private Sub StartStopService(Sender As EditButton, ByVal Start As Object)
             Dim StartBool As Boolean = DirectCast(Start, Boolean)
-            If StartBool Then
+            If StartBool AndAlso ActiveTemplate IsNot Nothing Then
                 Sender.Arguments = False
-                Sender.Text = "Stop"
+                Sender.Text = "Pause"
+                PSEngine.Start()
                 Sender.Parent.SetStatusText("Running")
             Else
                 Sender.Arguments = True
+                Sender.Parent.SetStatusText("Pausing...")
                 Sender.Text = "Start"
-                Sender.Parent.SetStatusText("Stopped")
+                PSEngine.RequestPause()
             End If
         End Sub
         Private Sub ChangeTemplate(Sender As EditButton, Optional ByVal State As Object = Nothing)
@@ -4938,6 +4956,11 @@ Module UserInterface
             Next
             Return Ret
         End Function
+        Public ReadOnly Property EditButtons As List(Of EditButton)
+            Get
+                Return varEditButtons
+            End Get
+        End Property
         Public ReadOnly Property StatusText As String
             Get
                 Return varStatusText
