@@ -6,7 +6,7 @@ Imports G4_Driftsverktøy
 'Imports AudiopoLib
 'Imports G4_Driftsverktøy
 'Imports System.Reflection
-Module ComponentsNew
+Public Module ComponentsNew
 
     Public Interface IListElementFontProvider
         Property StaticLabelFont(ByVal FontSize As ListElementFontSize) As Font
@@ -740,7 +740,11 @@ Module ComponentsNew
                         ' Finn ut hvilken egenskap som skal settes
                         Select Case PropertyValuePair(0)
                             Case "%desc%" ' Description
-                                Ret.Description = PropertyValuePair(1)
+                                If PropertyValuePair.Count = 2 Then
+                                    Ret.Description = PropertyValuePair(1)
+                                Else
+                                    Ret.Description = ""
+                                End If
                             Case Else
                                 Throw New Exception("Unknown property: " & PropertyValuePair(0))
                         End Select
@@ -1122,12 +1126,21 @@ Module ComponentsNew
         Inherits ChildComponentInformation
         Private varRunEvery As Integer
         Private varInterval As RoutineDateInterval
+        Private varLastRun As String
         Public Property RunEvery As Integer
             Get
                 Return varRunEvery
             End Get
             Set(value As Integer)
                 varRunEvery = value
+            End Set
+        End Property
+        Public Property LastRun As String
+            Get
+                Return varLastRun
+            End Get
+            Set(value As String)
+                varLastRun = value
             End Set
         End Property
         Public Overrides Function CopyUnknown() As ChildComponentInformation
@@ -1141,18 +1154,20 @@ Module ComponentsNew
                 varInterval = value
             End Set
         End Property
-        Public Sub New(ByVal RoutineName As String, RunEvery As Integer, Interval As RoutineDateInterval, Active As Boolean)
+        Public Sub New(ByVal RoutineName As String, RunEvery As Integer, Interval As RoutineDateInterval, Active As Boolean, LastRun As String)
             MyBase.New(RoutineName, Active)
             varRunEvery = RunEvery
             varInterval = Interval
+            varLastRun = LastRun
         End Sub
         Public Sub New()
             MyBase.New("Empty", False)
             varRunEvery = 1
             varInterval = RoutineDateInterval.Weeks
+            varLastRun = "Never"
         End Sub
         Public Shadows Function Copy() As RoutineInformation
-            Dim Ret As New RoutineInformation(Name, RunEvery, Interval, Active)
+            Dim Ret As New RoutineInformation(Name, RunEvery, Interval, Active, LastRun)
             Ret.MatchingEntryExists = MatchingEntryExists
             Return Ret
         End Function
@@ -1161,6 +1176,7 @@ Module ComponentsNew
             Dim RetRunEvery As Integer = 0
             Dim RetInterval As RoutineDateInterval = Nothing
             Dim RetActive As Boolean
+            Dim RetLastRun As String = "Not loaded"
             Dim CutLine As String = Line.Remove(0, 10)
             Dim Parts() As String = CutLine.Split(New String() {" && "}, StringSplitOptions.RemoveEmptyEntries)
             For Each Part As String In Parts
@@ -1175,14 +1191,16 @@ Module ComponentsNew
                         RetInterval = FormatConverter.GetRoutineIntervalFromString(PropertyValuePair(1))
                     Case "%active%"
                         RetActive = FormatConverter.GetBooleanFromNumeric(PropertyValuePair(1))
+                    Case "%lastrun%"
+                        RetLastRun = PropertyValuePair(1)
                     Case Else
                         Throw New Exception("Unknown property: " & PropertyValuePair(0))
                 End Select
             Next
-            Return New RoutineInformation(RetName, RetRunEvery, RetInterval, RetActive)
+            Return New RoutineInformation(RetName, RetRunEvery, RetInterval, RetActive, RetLastRun)
         End Function
         Public Overrides Function OutputLine() As String
-            Return "$routine: %name%==" & Name & " && %runevery%==" & varRunEvery.ToString & " && %timespan%==" & varInterval.ToString() & " && %active%==" & FormatConverter.GetNumericBoolean(Active).ToString
+            Return "$routine: %name%==" & Name & " && %runevery%==" & varRunEvery.ToString & " && %timespan%==" & varInterval.ToString() & " && %active%==" & FormatConverter.GetNumericBoolean(Active).ToString & " && %lastrun%==" & varLastRun
         End Function
         Public Enum RoutineDateInterval As Byte
             Minutes
@@ -1263,7 +1281,7 @@ Module ComponentsNew
             Return New TaskInformation(RetName, RetActive, RetWaitForPrevious, RetRunAsync, RetArgs)
         End Function
         Public Overrides Function OutputLine() As String
-            Dim Ret As String = "$task: %name%==" & Name & " && %waitforprevious%==" & FormatConverter.GetNumericBoolean(varWaitForPrevious) & " && %active%==" & FormatConverter.GetNumericBoolean(Active).ToString & " && %runasync%==" & FormatConverter.GetNumericBoolean(Active).ToString
+            Dim Ret As String = "$task: %name%==" & Name & " && %waitforprevious%==" & FormatConverter.GetNumericBoolean(varWaitForPrevious) & " && %active%==" & FormatConverter.GetNumericBoolean(Active).ToString & " && %runasync%==" & FormatConverter.GetNumericBoolean(RunAsync).ToString
             For Each Arg As Object In Arguments
                 Ret &= " && %arg%==" & Arg.ToString
             Next

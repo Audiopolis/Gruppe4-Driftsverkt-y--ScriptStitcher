@@ -113,6 +113,8 @@
     <Compile Include="FontCollection.vb" />
     <Compile Include="Globals.vb" />
     <Compile Include="GlobalSuppressions.vb" />
+    <Compile Include="PSExecutionEngine.vb" />
+    <Compile Include="TaskExecutionInfo.vb" />
     <Compile Include="Threader.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
     <Compile Include="My Project\Application.Designer.vb">

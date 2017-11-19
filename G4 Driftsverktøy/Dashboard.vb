@@ -12,7 +12,7 @@ Public Class Dashboard
     Implements IHeaderControlContainer
     Dim Drag As Boolean
     Dim MouseX, MouseY As Integer
-    Dim WithEvents TestTask As New PSTask(True, "Testtittel", "C:\Users\Magnus\Desktop\G4Test\Test1.ps1")
+    'Dim WithEvents TestTask As New TaskExecutionInfo(True, "Testtittel", "C:\Users\Magnus\Desktop\G4Test\Test1.ps1")
     Private Sub Dashboard_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         ' VIKTIG!!!!!!!!
         ' Først må man sette ExecutionPolicy til RemoteSigned (eller bruke signaturer) PÅ x86-VERSJONEN av PowerShell.
@@ -35,7 +35,6 @@ Public Class Dashboard
             .Parent = Me
             .BringToFront()
         End With
-        AddHandler Header.ViewClicked, AddressOf Header_ViewClicked
         AddHeaderEventHandlers()
         Loader.LoadAll()
 
@@ -88,6 +87,7 @@ Public Class Dashboard
         'End Select
     End Sub
     Public Sub AddHeaderEventHandlers() Implements IHeaderControlContainer.AddEventHandlers
+        AddHandler Header.ViewClicked, AddressOf Header_ViewClicked
         AddHandler Header.MouseDown, AddressOf Header_MouseDown
         AddHandler Header.MouseUp, AddressOf Header_MouseUp
         AddHandler Header.MouseMove, AddressOf Header_MouseMove
@@ -95,6 +95,7 @@ Public Class Dashboard
         AddHandler Header.MinimizeClicked, AddressOf MinimizeClicked
     End Sub
     Public Sub RemoveHeaderEventHandlers() Implements IHeaderControlContainer.RemoveEventHandlers
+        RemoveHandler Header.ViewClicked, AddressOf Header_ViewClicked
         RemoveHandler Header.MouseDown, AddressOf Header_MouseDown
         RemoveHandler Header.MouseUp, AddressOf Header_MouseUp
         RemoveHandler Header.MouseMove, AddressOf Header_MouseMove
@@ -125,7 +126,7 @@ Public Class Dashboard
             Left = Cursor.Position.X - MouseX
         End If
     End Sub
-    Private Sub TaskCompleted(Sender As Object, e As PSTaskCompletedEventArgs) Handles TestTask.TaskCompleted
-        'MsgBox(e.Result.Result.Item(0).ToString)
-    End Sub
+    'Private Sub TaskCompleted(Sender As Object, e As PSTaskCompletedEventArgs) Handles TestTask.TaskCompleted
+    '    MsgBox(e.Result.Result.Item(0).ToString)
+    'End Sub
 End Class
