@@ -5,6 +5,7 @@ Imports System.Linq
 ''' Executes the tasks within routines in an orderly fashion.
 ''' </summary>
 Public Class PSExecutionEngine
+    Implements IDisposable
     Private RoutineQueue As New List(Of RoutineQueueInformation)
     Private WithEvents QueueTimer As New Timers.Timer(5000)
     Private SC As SynchronizationContext = SynchronizationContext.Current
@@ -48,7 +49,6 @@ Public Class PSExecutionEngine
                 If Not varPauseRequested Then Start()
             End If
         Else
-            Debug.Print("Empty queue, checking again")
             varReady = True
             Start()
         End If
@@ -58,7 +58,7 @@ Public Class PSExecutionEngine
             If RoutineQueue.Count > 0 Then
                 With RoutineQueue.First
                     .Information.LastRun = Date.Now.ToString
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(.InSchedule.GetFullFilePath, .InSchedule.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(.InSchedule.GetFullFilePath, .InSchedule.OutputFileContents), AddressOf OverwriteFinished, Nothing)
                     With .Entry.Tasks
                         Dim iLast As Integer = .Count - 1
                         If iLast >= 0 Then
@@ -107,7 +107,6 @@ Public Class PSExecutionEngine
                     Dim NewTask As New TaskExecutionInfo(TaskToExecute.Information, AddressOf TaskExecution_Finished)
                     RunningTasks.Add(NewTask)
                     TaskExecutionQueue.RemoveAt(0)
-                    If PreviousValue IsNot Nothing Then MsgBox("Executing with value: " & PreviousValue.ToString)
                     NewTask.Execute(PreviousValue)
                 End If
             Loop Until TaskExecutionQueue.Count = 0
@@ -128,7 +127,6 @@ Public Class PSExecutionEngine
             ElseIf ExecutionInfo.Result.Result.Count > 1 Then
                 PreviousValue = ExecutionInfo.Result.Result.ToArray
             End If
-            Debug.Print("Finished script " & Sender.TaskInformation.Name & ", new value: " & PreviousValue.ToString)
         End If
         Sender.Dispose()
         If RunningTasks.Count = 0 Then
@@ -146,6 +144,24 @@ Public Class PSExecutionEngine
             MsgBox("Error: " & e.Exception.ToString)
         End If
     End Sub
+
+#Region "IDisposable Support"
+    Private disposedValue As Boolean
+    Protected Overridable Sub Dispose(disposing As Boolean)
+        If Not disposedValue Then
+            If disposing Then
+                QueueTimer.Dispose()
+                For Each Task As TaskExecutionInfo In RunningTasks
+                    Task.Dispose()
+                Next
+            End If
+        End If
+        disposedValue = True
+    End Sub
+    Public Sub Dispose() Implements IDisposable.Dispose
+        Dispose(True)
+    End Sub
+#End Region
 End Class
 Public Class RoutineQueueInformation
     Private varInformation As RoutineInformation

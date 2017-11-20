@@ -6,3 +6,4 @@
 
 <Assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification:="<Pending>", Scope:="member", Target:="~P:G4_Driftsverktøy.UserInterface.ComponentPicker`1.varCategories")>
 <Assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification:="<Pending>", Scope:="member", Target:="~P:G4_Driftsverktøy.UserInterface.ComponentPicker`1.varItems")>
+<Assembly: CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly", MessageId:="Except", Scope:="member", Target:="G4_Driftsverktøy.UserInterface+ScrollableList`1.#DeselectAll(System.Int32)")>
