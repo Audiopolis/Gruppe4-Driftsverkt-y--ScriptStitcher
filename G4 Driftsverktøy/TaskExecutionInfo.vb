@@ -74,6 +74,7 @@ Public Class TaskExecutionInfo
     Private Sub AsyncTaskCompleted(Sender As Object, e As ThreadStarterEventArgs) Handles TaskRunner.WorkCompleted
         Dim UnboxedResult As ScriptResult = DirectCast(e.Result, ScriptResult)
         WhenFinished.Invoke(Me, New PSTaskCompletedEventArgs(UnboxedResult, varTaskInformation))
+        If TaskRunner IsNot Nothing Then TaskRunner.Dispose()
     End Sub
     Private Function RunTask(Arguments() As Object) As ScriptResult
         Dim Result As Collection(Of PSObject)

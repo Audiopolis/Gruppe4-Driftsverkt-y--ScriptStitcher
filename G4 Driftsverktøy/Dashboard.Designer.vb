@@ -6,8 +6,9 @@ Partial Class Dashboard
     <System.Diagnostics.DebuggerNonUserCode()> _
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
         Try
+            RemoveHeaderEventHandlers()
             If disposing Then
-                RemoveHeaderEventHandlers()
+                RalewayFonts.Dispose()
                 If components IsNot Nothing Then components.Dispose()
             End If
         Finally

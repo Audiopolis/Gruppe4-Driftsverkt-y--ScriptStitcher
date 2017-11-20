@@ -27,7 +27,7 @@ Public MustInherit Class FontCollection
             Return FontCache(Identity.Identity)
         End Get
     End Property
-    Public Sub New()
+    Protected Sub New()
     End Sub
     Protected MustOverride ReadOnly Property DefaultFontOnException As Font
     Private Sub LoadFonts()

@@ -102,7 +102,7 @@ Public Module UserInterface
         Private Sub CategoriesList_CategoryDropped(Sender As Object, e As CategoryDroppedEventArgs) Handles CategoriesList.CategoryDropped
             If Viewer.VerifyDiscard Then
                 RenameOccurred = True
-                Dim OldCategoryName As String = DirectCast(e.Trigger.Data.GetData(DataFormats.StringFormat), String)
+                'Dim OldCategoryName As String = DirectCast(e.Trigger.Data.GetData(DataFormats.StringFormat), String)
                 Viewer.CurrentTask.ChangeCategoryAndMoveFile(e.TargetItem.Value.CategoryName, AddressOf CategoryChanged, Viewer.CurrentTask)
             End If
         End Sub
@@ -127,12 +127,12 @@ Public Module UserInterface
                         For Each Item As ComponentEntry In TargetItems
                             Dim OldDirectory As String = Item.GetFullFilePath
                             Dim NewDirectory As String = ApplicationPath & "\Data\" & GarbageBinName & "\Tasks\" & Item.GetFileNameFromName
-                            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
+                            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
                         Next
                     End If
                 Else
                     Loader.RemoveTaskCategory(Value.CategoryName)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFolder(TaskEntry.BaseDirectory & "\" & Value.CategoryName), AddressOf DeleteFolderFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFolder(TaskEntry.BaseDirectory & "\" & Value.CategoryName), AddressOf DeleteFolderFinished, Nothing)
                 End If
             End If
         End Sub
@@ -140,7 +140,7 @@ Public Module UserInterface
             Dim OriginalPath As String = DirectCast(e.Arguments("OriginalPath"), String)
             Dim NewPath As String = DirectCast(e.Arguments("NewPath"), String)
             Dim OriginalName As String = IO.Path.GetFileNameWithoutExtension(OriginalPath)
-            Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
+            ' Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
             Dim CategoryName As String = FormatConverter.ExtractHighestLevelDirectory(OriginalPath, True)
             If e.ErrorOccurred Then
                 MsgBox("An unexpected error occurred (code 10).")
@@ -150,7 +150,7 @@ Public Module UserInterface
                     Loader.RemoveTaskCategory(CategoryName)
                     Dim OldFolder As String = IO.Directory.GetParent(OriginalPath).FullName
                     If CurrentCategoryName = CategoryName Then Viewer.CurrentTask = Nothing
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFolder(OldFolder), AddressOf DeleteFolderFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFolder(OldFolder), AddressOf DeleteFolderFinished, Nothing)
                 End If
             End If
         End Sub
@@ -166,7 +166,7 @@ Public Module UserInterface
             If Not RenameOccurred Then
                 RenameOccurred = True
                 If ClearList Then CategoriesList.Clear()
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.RenameFolder(TaskEntry.BaseDirectory & "\" & OldName, NewName, False), AddressOf RenameFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.RenameFolder(TaskEntry.BaseDirectory & "\" & OldName, NewName, False), AddressOf RenameFinished, Nothing)
             End If
         End Sub
         Private Sub RenameFinished(e As FileOperationEventArgs)
@@ -222,10 +222,10 @@ Public Module UserInterface
         End Sub
         Private Sub ReloadCategories()
             'Viewer.ChangesMade = False
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListDirectories(TaskEntry.BaseDirectory), AddressOf ReloadCategories_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListDirectories(TaskEntry.BaseDirectory), AddressOf ReloadCategories_Finished, Nothing)
         End Sub
         Private Sub ReloadTasks()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListFiles(TaskEntry.BaseDirectory & "\" & CurrentCategoryName), AddressOf ReloadTasks_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListFiles(TaskEntry.BaseDirectory & "\" & CurrentCategoryName), AddressOf ReloadTasks_Finished, Nothing)
         End Sub
         Private Sub ReloadCategories_Finished(e As FileOperationEventArgs)
             Dim Directories() As String = DirectCast(e.Result, String())
@@ -272,7 +272,7 @@ Public Module UserInterface
         End Sub
         Protected Overrides Sub OnTabShown(e As EventArgs)
             MyBase.OnTabShown(e)
-            Header.CurrentDirectiry = {HeaderControl.Views.Overview, HeaderControl.Views.TemplateBrowser, HeaderControl.Views.ScheduleBrowser, HeaderControl.Views.RoutineBrowser, HeaderControl.Views.TaskBrowser}
+            Header.CurrentDirectory = {HeaderControl.ApplicationView.Overview, HeaderControl.ApplicationView.TemplateBrowser, HeaderControl.ApplicationView.ScheduleBrowser, HeaderControl.ApplicationView.RoutineBrowser, HeaderControl.ApplicationView.TaskBrowser}
             Viewer.CurrentTask = Viewer.CurrentTask
         End Sub
         Private Sub AddCategoryIcon_Clicked(Sender As Object, e As EventArgs)
@@ -282,7 +282,7 @@ Public Module UserInterface
             If Viewer.VerifyDiscard Then AddNewTask()
         End Sub
         Private Sub CreateCategory()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateDirectory(TaskEntry.BaseDirectory & "\New category", True), AddressOf CategoryCreated, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateDirectory(TaskEntry.BaseDirectory & "\New category", True), AddressOf CategoryCreated, Nothing)
         End Sub
         Private Sub CategoryCreated(e As FileOperationEventArgs)
             Dim NewName As String = FormatConverter.ExtractHighestLevelDirectory(DirectCast(e.Result, String), False)
@@ -290,7 +290,7 @@ Public Module UserInterface
             ReloadCategories()
         End Sub
         Private Sub AddNewTask()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateFile(TaskEntry.BaseDirectory & "\" & CurrentCategoryName, "New Task.txt", True, FormatConverter.GetBytesFromString("// meta" & vbNewLine & "$meta: %desc%==This task does not have a description yet" & vbNewLine & "// parameters" & vbNewLine & "$parameter: %name%==FirstParameter && %type%==STR && %comment%==First word to print" & "$parameter: %name%==SecondParameter && %type%==STR && %comment%==Second word to print"), TaskEntry.BaseDirectory), AddressOf AddNewTask_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateFile(TaskEntry.BaseDirectory & "\" & CurrentCategoryName, "New Task.txt", True, FormatConverter.GetBytesFromString("// meta" & vbNewLine & "$meta: %desc%==This task does not have a description yet" & vbNewLine & "// parameters" & vbNewLine & "$parameter: %name%==FirstParameter && %type%==STR && %comment%==First word to print" & "$parameter: %name%==SecondParameter && %type%==STR && %comment%==Second word to print"), TaskEntry.BaseDirectory), AddressOf AddNewTask_Finished, Nothing)
         End Sub
         Private Sub AddNewTask_Finished(e As FileOperationEventArgs)
             If Not e.ErrorOccurred Then
@@ -367,22 +367,21 @@ Public Module UserInterface
     Public Class TaskViewer
         Inherits Control
         Private VarCurrentTask As TaskEntry = Nothing
-        Private varPadding As New Padding(10)
-        Private varUseCompatibleTextRendering As Boolean = True
+        'Private varPadding As New Padding(10)
+        'Private varUseCompatibleTextRendering As Boolean = True
         'Private varLoadingSurface As New PictureBox
         'Private varLoadingGraphics As LoadingGraphics(Of PictureBox)
-        Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
+        'Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
         Private CancelButton, SaveButton As New PictureBox
-        Private ElementBrush As SolidBrush
-        Private varElementColor As Color = Color.FromArgb(200, 200, 200)
+        'Private ElementBrush As SolidBrush
+        'Private varElementColor As Color = Color.FromArgb(200, 200, 200)
         'Private PropertiesListContainer, RoutineListContainer As AutoSizedContainer
         Private PropertiesListContainer As AutoSizedContainer
 
         Private WithEvents PropertiesList As New PropertyList
         'Private WithEvents TasksInRoutine As New TasksInRoutineList
-        Private NameItem, DescriptionItem, ScriptItem As ComponentViewItem
+        Private NameItem, DescriptionItem, PathItem As ComponentViewItem
         Private CategoryItem As CategoryComponentViewItem
-        Private PathItem As ComponentViewItem
         'Private WithEvents TaskPicker As New TaskPicker
         Public Event TaskChanged(Sender As Object, e As CurrentComponentChangedEventArgs)
         Public Event ChangesSaved(Sender As Object, e As CurrentComponentChangedEventArgs)
@@ -624,7 +623,7 @@ Public Module UserInterface
             If MsgBox("Are you sure you want to delete this task?", MsgBoxStyle.OkCancel, "Confirm deletion of task") = MsgBoxResult.Ok Then
                 Dim OldDirectory As String = CurrentTask.GetFullFilePath
                 Dim NewDirectory As String = ApplicationPath & "\Data\" & GarbageBinName & "\Tasks\" & CurrentTask.GetFileNameFromName
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
             End If
         End Sub
         Private Sub MoveToBinFinished(e As FileOperationEventArgs)
@@ -738,10 +737,10 @@ Public Module UserInterface
                 End With
                 Dim NewFullPath As String = VarCurrentTask.GetFullFilePath
                 If NewFullPath <> OldDirectory Then
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, CurrentTask.GetFullFilePath, False), AddressOf MoveFinished, Nothing)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.UpdateTaskInformationInRoutines(OldName, NewName), AddressOf TaskInformationInRoutinesUpdated, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, CurrentTask.GetFullFilePath, False), AddressOf MoveFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.UpdateTaskInformationInRoutines(OldName, NewName), AddressOf TaskInformationInRoutinesUpdated, Nothing)
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(NewFullPath, CurrentTask.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(NewFullPath, CurrentTask.OutputFileContents), AddressOf OverwriteFinished, Nothing)
                 End If
             End If
 
@@ -749,8 +748,6 @@ Public Module UserInterface
         Private Sub TaskInformationInRoutinesUpdated(e As FileOperationEventArgs)
             If e.ErrorOccurred Then
                 MsgBox("(Finished) Errors occurred: " & vbNewLine & e.Exception.Message)
-            Else
-                Dim ModifiedRoutines() As String = DirectCast(e.Result, String()) ' TODO: get rid of these
             End If
         End Sub
         Private Sub MoveFinished(Result As FileOperationEventArgs)
@@ -758,7 +755,7 @@ Public Module UserInterface
                 MsgBox("Error occurred: " & Result.Exception.Message & vbNewLine & DirectCast(Result.Result, String))
                 ' TODO: Log error
             Else
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(VarCurrentTask.GetFullFilePath, VarCurrentTask.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(VarCurrentTask.GetFullFilePath, VarCurrentTask.OutputFileContents), AddressOf OverwriteFinished, Nothing)
             End If
         End Sub
         Private Sub OverwriteFinished(Result As FileOperationEventArgs)
@@ -791,19 +788,19 @@ Public Module UserInterface
                 ElseIf SurelyLoaded Then
                     Throw New Exception("Could not find the task " & FormatConverter.ExtractFileName(TaskFile, False) & ". It may not be loaded yet.")
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(TaskFile), AddressOf TaskLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(TaskFile), AddressOf TaskLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 End If
             Else
                 CurrentTask = Nothing
                 If Match IsNot Nothing Then
                     Loader.RemoveTask(Match.Name)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(TaskFile), AddressOf TaskLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(TaskFile), AddressOf TaskLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 ElseIf SurelyLoaded Then
                     Throw New Exception("Could not find the task " & FormatConverter.ExtractFileName(TaskFile, False) & ". It may not be loaded yet.")
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(TaskFile), AddressOf TaskLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(TaskFile), AddressOf TaskLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 End If
             End If
@@ -835,7 +832,7 @@ Public Module UserInterface
         Private RoutineNameToSelectAfterReload As String = Nothing
         Private RenameOccurred As Boolean
         'Private WithEvents SlideTimer As New Timers.Timer(1000 / 60)
-        Public Sub New(Parent As MultiTabWindow)
+        Public Sub New(Parent As MultitabWindow)
             MyBase.New(Parent)
             'SlideTimer.AutoReset = False
             CategoriesList.BackColor = ApplicationBackColor
@@ -913,7 +910,7 @@ Public Module UserInterface
         Private Sub CategoriesList_CategoryDropped(Sender As Object, e As CategoryDroppedEventArgs) Handles CategoriesList.CategoryDropped
             If Viewer.VerifyDiscard Then
                 RenameOccurred = True
-                Dim OldCategoryName As String = DirectCast(e.Trigger.Data.GetData(DataFormats.StringFormat), String)
+                ' Dim OldCategoryName As String = DirectCast(e.Trigger.Data.GetData(DataFormats.StringFormat), String)
                 Viewer.CurrentRoutine.ChangeCategoryAndMoveFile(e.TargetItem.Value.CategoryName, AddressOf CategoryChanged, Viewer.CurrentRoutine)
             End If
         End Sub
@@ -938,12 +935,12 @@ Public Module UserInterface
                         For Each Item As ComponentEntry In TargetItems
                             Dim OldDirectory As String = Item.GetFullFilePath
                             Dim NewDirectory As String = ApplicationPath & "\Data\" & GarbageBinName & "\Routines\" & Item.GetFileNameFromName
-                            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
+                            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
                         Next
                     End If
                 Else
                     Loader.RemoveRoutineCategory(Value.CategoryName)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFolder(RoutineEntry.BaseDirectory & "\" & Value.CategoryName), AddressOf DeleteFolderFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFolder(RoutineEntry.BaseDirectory & "\" & Value.CategoryName), AddressOf DeleteFolderFinished, Nothing)
                 End If
             End If
         End Sub
@@ -951,7 +948,7 @@ Public Module UserInterface
             Dim OriginalPath As String = DirectCast(e.Arguments("OriginalPath"), String)
             Dim NewPath As String = DirectCast(e.Arguments("NewPath"), String)
             Dim OriginalName As String = IO.Path.GetFileNameWithoutExtension(OriginalPath)
-            Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
+            ' Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
             Dim CategoryName As String = FormatConverter.ExtractHighestLevelDirectory(OriginalPath, True)
             If e.ErrorOccurred Then
                 MsgBox("An unexpected error occurred (code 10).")
@@ -961,7 +958,7 @@ Public Module UserInterface
                     Loader.RemoveRoutineCategory(CategoryName)
                     Dim OldFolder As String = IO.Directory.GetParent(OriginalPath).FullName
                     If CurrentCategoryName = CategoryName Then Viewer.CurrentRoutine = Nothing
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFolder(OldFolder), AddressOf DeleteFolderFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFolder(OldFolder), AddressOf DeleteFolderFinished, Nothing)
                 End If
             End If
         End Sub
@@ -977,7 +974,7 @@ Public Module UserInterface
             If Not RenameOccurred Then
                 RenameOccurred = True
                 If ClearList Then CategoriesList.Clear()
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.RenameFolder(RoutineEntry.BaseDirectory & "\" & OldName, NewName, False), AddressOf RenameFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.RenameFolder(RoutineEntry.BaseDirectory & "\" & OldName, NewName, False), AddressOf RenameFinished, Nothing)
             End If
         End Sub
         Private Sub RenameFinished(e As FileOperationEventArgs)
@@ -1034,10 +1031,10 @@ Public Module UserInterface
 
         Private Sub ReloadCategories()
             Viewer.ChangesMade = False
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListDirectories(RoutineEntry.BaseDirectory), AddressOf ReloadCategories_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListDirectories(RoutineEntry.BaseDirectory), AddressOf ReloadCategories_Finished, Nothing)
         End Sub
         Private Sub ReloadRoutines()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListFiles(RoutineEntry.BaseDirectory & "\" & CurrentCategoryName), AddressOf ReloadRoutines_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListFiles(RoutineEntry.BaseDirectory & "\" & CurrentCategoryName), AddressOf ReloadRoutines_Finished, Nothing)
         End Sub
         Private Sub ReloadCategories_Finished(e As FileOperationEventArgs)
             Dim Directories() As String = DirectCast(e.Result, String())
@@ -1084,7 +1081,7 @@ Public Module UserInterface
         End Sub
         Protected Overrides Sub OnTabShown(e As EventArgs)
             MyBase.OnTabShown(e)
-            Header.CurrentDirectiry = {HeaderControl.Views.Overview, HeaderControl.Views.TemplateBrowser, HeaderControl.Views.ScheduleBrowser, HeaderControl.Views.RoutineBrowser}
+            Header.CurrentDirectory = {HeaderControl.ApplicationView.Overview, HeaderControl.ApplicationView.TemplateBrowser, HeaderControl.ApplicationView.ScheduleBrowser, HeaderControl.ApplicationView.RoutineBrowser}
             Viewer.CurrentRoutine = Viewer.CurrentRoutine
         End Sub
         Private Sub AddCategoryIcon_Clicked(Sender As Object, e As EventArgs)
@@ -1094,7 +1091,7 @@ Public Module UserInterface
             If Viewer.VerifyDiscard Then AddNewRoutine()
         End Sub
         Private Sub CreateCategory()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateDirectory(RoutineEntry.BaseDirectory & "\New category", True), AddressOf CategoryCreated, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateDirectory(RoutineEntry.BaseDirectory & "\New category", True), AddressOf CategoryCreated, Nothing)
         End Sub
         Private Sub CategoryCreated(e As FileOperationEventArgs)
             Dim NewName As String = FormatConverter.ExtractHighestLevelDirectory(DirectCast(e.Result, String), False)
@@ -1102,7 +1099,7 @@ Public Module UserInterface
             ReloadCategories()
         End Sub
         Private Sub AddNewRoutine()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateFile(RoutineEntry.BaseDirectory & "\" & CurrentCategoryName, "New Routine.txt", True, FormatConverter.GetBytesFromString("//meta" & vbNewLine & "$meta: %desc%==This routine does not have a description yet" & vbNewLine & "// tasks" & vbNewLine), RoutineEntry.BaseDirectory), AddressOf AddNewRoutine_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateFile(RoutineEntry.BaseDirectory & "\" & CurrentCategoryName, "New Routine.txt", True, FormatConverter.GetBytesFromString("//meta" & vbNewLine & "$meta: %desc%==This routine does not have a description yet" & vbNewLine & "// tasks" & vbNewLine), RoutineEntry.BaseDirectory), AddressOf AddNewRoutine_Finished, Nothing)
         End Sub
         Private Sub AddNewRoutine_Finished(e As FileOperationEventArgs)
             If Not e.ErrorOccurred Then
@@ -1179,14 +1176,9 @@ Public Module UserInterface
     Public Class RoutineViewer
         Inherits Control
         Private varCurrentRoutine As RoutineEntry = Nothing
-        'Private varPadding As New Padding(10)
-        'Private varUseCompatibleTextRendering As Boolean = True
-        'Private varLoadingSurface As New PictureBox
-        'Private varLoadingGraphics As LoadingGraphics(Of PictureBox)
-        'Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
         Private CancelButton, SaveButton As New PictureBox
-        Private ElementBrush As SolidBrush
-        Private varElementColor As Color = Color.FromArgb(200, 200, 200)
+        'Private ElementBrush As SolidBrush
+        ' Private varElementColor As Color = Color.FromArgb(200, 200, 200)
         Private PropertiesListContainer, TaskListContainer As AutoSizedContainer
         Private WithEvents PropertiesList As New PropertyList
         Private WithEvents TasksInRoutine As New TasksInRoutineList
@@ -1285,17 +1277,7 @@ Public Module UserInterface
                         For i As Integer = 0 To iLast
                             Dim CurrentInfo As TaskInformation = varCurrentRoutine.Tasks(i)
                             CurrentInfo.MatchingEntryExists = (Loader.LookupTask(CurrentInfo.Name) IsNot Nothing)
-                            Dim NewItem As New TasksInRoutineListItem(New TasksInRoutineListItemValue(CurrentInfo)) With {.Index = i}
-                            With NewItem
-                                .Name = CurrentInfo.Name
-                                .IsActive = CurrentInfo.Active
-                                '.RunAsync = CurrentInfo.RunAsync
-                                '.WaitForPrevious = CurrentInfo.WaitForPrevious
-                                '.Arguments
-                                ' TODO: Extend functionality of tasksinroutinelistitem
-                                'NewItem.WaitForPrevious = .
-                                'NewItem.RunAsync = .RunAsync
-                            End With
+                            Dim NewItem As New TasksInRoutineListItem(New TasksInRoutineListItemValue(CurrentInfo)) With {.Index = i, .Name = CurrentInfo.Name, .IsActive = CurrentInfo.Active}
                             AddHandler NewItem.RemoveClicked, AddressOf RemoveClicked
                             AddHandler NewItem.EditClicked, AddressOf EditClicked
                             TasksInRoutine.Add(NewItem)
@@ -1475,7 +1457,7 @@ Public Module UserInterface
             If CurrentRoutine.Tasks.Count = 0 OrElse MsgBox("Are you sure you want to delete this routine?", MsgBoxStyle.OkCancel, "Confirm deletion of routine") = MsgBoxResult.Ok Then
                 Dim OldDirectory As String = CurrentRoutine.GetFullFilePath
                 Dim NewDirectory As String = ApplicationPath & "\Data\" & GarbageBinName & "\Routines\" & CurrentRoutine.GetFileNameFromName
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
             End If
         End Sub
         Private Sub MoveToBinFinished(e As FileOperationEventArgs)
@@ -1595,10 +1577,10 @@ Public Module UserInterface
                 End With
                 Dim NewFullPath As String = varCurrentRoutine.GetFullFilePath
                 If NewFullPath <> OldDirectory Then
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, CurrentRoutine.GetFullFilePath, False), AddressOf MoveFinished, Nothing)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.UpdateRoutineInformationInSchedules(OldName, NewName), AddressOf RoutineInformationInSchedulesUpdated, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, CurrentRoutine.GetFullFilePath, False), AddressOf MoveFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.UpdateRoutineInformationInSchedules(OldName, NewName), AddressOf RoutineInformationInSchedulesUpdated, Nothing)
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(NewFullPath, CurrentRoutine.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(NewFullPath, CurrentRoutine.OutputFileContents), AddressOf OverwriteFinished, Nothing)
                 End If
             End If
             'Dim SenderButton As PictureBox = DirectCast(Sender, PictureBox)
@@ -1637,8 +1619,6 @@ Public Module UserInterface
         Private Sub RoutineInformationInSchedulesUpdated(e As FileOperationEventArgs)
             If e.ErrorOccurred Then
                 MsgBox("(Finished) Errors occurred: " & vbNewLine & e.Exception.Message)
-            Else
-                Dim ModifiedSchedules() As String = DirectCast(e.Result, String()) ' TODO: get rid of these
             End If
         End Sub
         Private Sub MoveFinished(Result As FileOperationEventArgs)
@@ -1646,7 +1626,7 @@ Public Module UserInterface
                 MsgBox("Error occurred: " & Result.Exception.Message & vbNewLine & DirectCast(Result.Result, String))
                 ' TODO: Log error
             Else
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(varCurrentRoutine.GetFullFilePath, varCurrentRoutine.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(varCurrentRoutine.GetFullFilePath, varCurrentRoutine.OutputFileContents), AddressOf OverwriteFinished, Nothing)
             End If
         End Sub
         Private Sub OverwriteFinished(Result As FileOperationEventArgs)
@@ -1679,19 +1659,19 @@ Public Module UserInterface
                 ElseIf SurelyLoaded Then
                     Throw New Exception("Could not find the routine " & FormatConverter.ExtractFileName(RoutineFile, False) & ". It may not be loaded yet.")
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(RoutineFile), AddressOf RoutineLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(RoutineFile), AddressOf RoutineLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 End If
             Else
                 CurrentRoutine = Nothing
                 If Match IsNot Nothing Then
                     Loader.RemoveRoutine(Match.Name)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(RoutineFile), AddressOf RoutineLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(RoutineFile), AddressOf RoutineLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 ElseIf SurelyLoaded Then
                     Throw New Exception("Could not find the routine " & FormatConverter.ExtractFileName(RoutineFile, False) & ". It may not be loaded yet.")
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(RoutineFile), AddressOf RoutineLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(RoutineFile), AddressOf RoutineLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 End If
             End If
@@ -1723,7 +1703,7 @@ Public Module UserInterface
         Private ScheduleNameToSelectAfterReload As String = Nothing
         Private RenameOccurred As Boolean
         'Private WithEvents SlideTimer As New Timers.Timer(1000 / 60)
-        Public Sub New(Parent As MultiTabWindow)
+        Public Sub New(Parent As MultitabWindow)
             MyBase.New(Parent)
             'SlideTimer.AutoReset = False
             CategoriesList.BackColor = ApplicationBackColor
@@ -1788,7 +1768,7 @@ Public Module UserInterface
         Private Sub CategoriesList_CategoryDropped(Sender As Object, e As CategoryDroppedEventArgs) Handles CategoriesList.CategoryDropped
             If Viewer.VerifyDiscard Then
                 RenameOccurred = True
-                Dim OldCategoryName As String = DirectCast(e.Trigger.Data.GetData(DataFormats.StringFormat), String)
+                'Dim OldCategoryName As String = DirectCast(e.Trigger.Data.GetData(DataFormats.StringFormat), String)
                 Viewer.CurrentSchedule.ChangeCategoryAndMoveFile(e.TargetItem.Value.CategoryName, AddressOf CategoryChanged, Viewer.CurrentSchedule)
             End If
         End Sub
@@ -1827,12 +1807,12 @@ Public Module UserInterface
                         For Each Item As ComponentEntry In TargetItems
                             Dim OldDirectory As String = Item.GetFullFilePath
                             Dim NewDirectory As String = ApplicationPath & "\Data\" & GarbageBinName & "\Schedules\" & Item.GetFileNameFromName
-                            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
+                            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
                         Next
                     End If
                 Else
                     Loader.RemoveScheduleCategory(Value.CategoryName)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFolder(ScheduleEntry.BaseDirectory & "\" & Value.CategoryName), AddressOf DeleteFolderFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFolder(ScheduleEntry.BaseDirectory & "\" & Value.CategoryName), AddressOf DeleteFolderFinished, Nothing)
                 End If ' TODO: Move entire folder instead.
             End If
         End Sub
@@ -1840,7 +1820,7 @@ Public Module UserInterface
             Dim OriginalPath As String = DirectCast(e.Arguments("OriginalPath"), String)
             Dim NewPath As String = DirectCast(e.Arguments("NewPath"), String)
             Dim OriginalName As String = IO.Path.GetFileNameWithoutExtension(OriginalPath)
-            Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
+            'Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
             Dim CategoryName As String = FormatConverter.ExtractHighestLevelDirectory(OriginalPath, True)
             If e.ErrorOccurred Then
                 MsgBox("An unexpected error occurred (code 10).")
@@ -1850,7 +1830,7 @@ Public Module UserInterface
                     Loader.RemoveScheduleCategory(CategoryName)
                     Dim OldFolder As String = IO.Directory.GetParent(OriginalPath).FullName
                     If CurrentCategoryName = CategoryName Then Viewer.CurrentSchedule = Nothing
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFolder(OldFolder), AddressOf DeleteFolderFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFolder(OldFolder), AddressOf DeleteFolderFinished, Nothing)
                 End If
             End If
         End Sub
@@ -1866,7 +1846,7 @@ Public Module UserInterface
             If Not RenameOccurred Then
                 RenameOccurred = True
                 If ClearList Then CategoriesList.Clear()
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.RenameFolder(ScheduleEntry.BaseDirectory & "\" & OldName, NewName, False), AddressOf RenameCategory_Finished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.RenameFolder(ScheduleEntry.BaseDirectory & "\" & OldName, NewName, False), AddressOf RenameCategory_Finished, Nothing)
             End If
         End Sub
         Private Sub RenameCategory_Finished(e As FileOperationEventArgs)
@@ -1923,10 +1903,10 @@ Public Module UserInterface
             SchedulesInCategoryContainer.Show()
         End Sub
         Private Sub ReloadCategories()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListDirectories(ApplicationPath & "\Data\Schedules"), AddressOf ReloadCategories_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListDirectories(ApplicationPath & "\Data\Schedules"), AddressOf ReloadCategories_Finished, Nothing)
         End Sub
         Private Sub ReloadSchedules()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListFiles(ApplicationPath & "\Data\Schedules\" & CurrentCategoryName), AddressOf ReloadSchedules_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListFiles(ApplicationPath & "\Data\Schedules\" & CurrentCategoryName), AddressOf ReloadSchedules_Finished, Nothing)
         End Sub
         Private Sub ReloadCategories_Finished(e As FileOperationEventArgs)
             Dim Directories() As String = DirectCast(e.Result, String())
@@ -1974,18 +1954,18 @@ Public Module UserInterface
         End Sub
         Protected Overrides Sub OnTabShown(e As EventArgs)
             MyBase.OnTabShown(e)
-            Header.CurrentDirectiry = {HeaderControl.Views.Overview, HeaderControl.Views.TemplateBrowser, HeaderControl.Views.ScheduleBrowser}
+            Header.CurrentDirectory = {HeaderControl.ApplicationView.Overview, HeaderControl.ApplicationView.TemplateBrowser, HeaderControl.ApplicationView.ScheduleBrowser}
             Viewer.CurrentSchedule = Viewer.CurrentSchedule
         End Sub
-        Private Sub CreateScheduleFromFileTest(Path As String)
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(Path), AddressOf FileReadFinished, Nothing)
-        End Sub
+        'Private Sub CreateScheduleFromFileTest(Path As String)
+        '    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(Path), AddressOf FileReadFinished, Nothing)
+        'End Sub
         Private Sub FileReadFinished(e As FileOperationEventArgs)
             If e.ErrorOccurred Then
                 Throw e.Exception
             End If
             Dim Lines() As String = DirectCast(e.Result, String())
-            Dim NewSchedule As ScheduleEntry = ScheduleEntry.CreateFromLines(Lines, DirectCast(e.Arguments("Path"), String))
+            'Dim NewSchedule As ScheduleEntry = ScheduleEntry.CreateFromLines(Lines, DirectCast(e.Arguments("Path"), String))
         End Sub
         Private Sub AddCategoryIcon_Clicked(Sender As Object, e As EventArgs)
             CreateCategory()
@@ -1995,7 +1975,7 @@ Public Module UserInterface
         End Sub
         Private Sub CreateCategory()
             ' TODO: Create new folder
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateDirectory(ScheduleEntry.BaseDirectory & "\New category", True), AddressOf CategoryCreated, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateDirectory(ScheduleEntry.BaseDirectory & "\New category", True), AddressOf CategoryCreated, Nothing)
         End Sub
         Private Sub CategoryCreated(e As FileOperationEventArgs)
             Dim NewName As String = FormatConverter.ExtractHighestLevelDirectory(DirectCast(e.Result, String), False)
@@ -2003,7 +1983,7 @@ Public Module UserInterface
             ReloadCategories()
         End Sub
         Private Sub AddNewSchedule()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateFile(ScheduleEntry.BaseDirectory & "\" & CurrentCategoryName, "New Schedule.txt", True, FormatConverter.GetBytesFromString("//meta" & vbNewLine & "$meta: %desc%==This schedule does not have a description yet" & vbNewLine & "//routines" & vbNewLine), ScheduleEntry.BaseDirectory), AddressOf AddNewSchedule_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateFile(ScheduleEntry.BaseDirectory & "\" & CurrentCategoryName, "New Schedule.txt", True, FormatConverter.GetBytesFromString("//meta" & vbNewLine & "$meta: %desc%==This schedule does not have a description yet" & vbNewLine & "//routines" & vbNewLine), ScheduleEntry.BaseDirectory), AddressOf AddNewSchedule_Finished, Nothing)
         End Sub
         Private Sub AddNewSchedule_Finished(e As FileOperationEventArgs)
             If Not e.ErrorOccurred Then
@@ -2081,14 +2061,14 @@ Public Module UserInterface
     Public Class ScheduleViewer
         Inherits Control
         Private varCurrentSchedule As ScheduleEntry = Nothing
-        Private varPadding As New Padding(10)
-        Private varUseCompatibleTextRendering As Boolean = True
+        'Private varPadding As New Padding(10)
+        ' Private varUseCompatibleTextRendering As Boolean = True
         'Private varLoadingSurface As New PictureBox
         'Private varLoadingGraphics As LoadingGraphics(Of PictureBox)
-        Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
+        'Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
         Private CancelButton, SaveButton As New PictureBox
-        Private ElementBrush As SolidBrush
-        Private varElementColor As Color = Color.FromArgb(200, 200, 200)
+        'Private ElementBrush As SolidBrush
+        'Private varElementColor As Color = Color.FromArgb(200, 200, 200)
         Private PropertiesListContainer, RoutineListContainer As AutoSizedContainer
         Private WithEvents PropertiesList As New PropertyList
         Private WithEvents RoutinesInSchedule As New RoutinesInScheduleList
@@ -2347,7 +2327,7 @@ Public Module UserInterface
             If CurrentSchedule.Routines.Count = 0 OrElse MsgBox("Are you sure you want to delete this schedule?", MsgBoxStyle.OkCancel, "Confirm deletion of schedule") = MsgBoxResult.Ok Then
                 Dim OldDirectory As String = CurrentSchedule.GetFullFilePath
                 Dim NewDirectory As String = ApplicationPath & "\Data\" & GarbageBinName & "\Schedules\" & CurrentSchedule.GetFileNameFromName
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, NewDirectory, True), AddressOf MoveToBinFinished, Nothing)
             End If
         End Sub
         Private Sub MoveToBinFinished(e As FileOperationEventArgs)
@@ -2471,18 +2451,17 @@ Public Module UserInterface
                 End With
                 Dim NewFullPath As String = varCurrentSchedule.GetFullFilePath
                 If NewFullPath <> OldDirectory Then
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, CurrentSchedule.GetFullFilePath, False), AddressOf MoveFinished, Nothing)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.UpdateScheduleInformationInTemplates(OldName, NewName), AddressOf ScheduleInformationInTemplatesUpdated, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, CurrentSchedule.GetFullFilePath, False), AddressOf MoveFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.UpdateScheduleInformationInTemplates(OldName, NewName), AddressOf ScheduleInformationInTemplatesUpdated, Nothing)
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(NewFullPath, CurrentSchedule.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(NewFullPath, CurrentSchedule.OutputFileContents), AddressOf OverwriteFinished, Nothing)
                 End If
             End If
         End Sub
         Private Sub ScheduleInformationInTemplatesUpdated(e As FileOperationEventArgs)
             If e.ErrorOccurred Then
                 MsgBox("(Finished) Errors occurred: " & vbNewLine & e.Exception.Message)
-            Else
-                Dim ModifiedTemplates() As String = DirectCast(e.Result, String())
+                'Dim ModifiedTemplates() As String = DirectCast(e.Result, String())
             End If
         End Sub
         Private Sub MoveFinished(Result As FileOperationEventArgs)
@@ -2490,7 +2469,7 @@ Public Module UserInterface
                 MsgBox("Error occurred: " & Result.Exception.Message & vbNewLine & DirectCast(Result.Result, String))
                 ' TODO: Log error
             Else
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(varCurrentSchedule.GetFullFilePath, varCurrentSchedule.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(varCurrentSchedule.GetFullFilePath, varCurrentSchedule.OutputFileContents), AddressOf OverwriteFinished, Nothing)
             End If
         End Sub
         Private Sub OverwriteFinished(Result As FileOperationEventArgs)
@@ -2523,19 +2502,19 @@ Public Module UserInterface
                 ElseIf SurelyLoaded Then
                     Throw New Exception("Could not find the schedule " & FormatConverter.ExtractFileName(ScheduleFile, False) & ". It may not be loaded yet.")
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(ScheduleFile), AddressOf ScheduleLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(ScheduleFile), AddressOf ScheduleLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 End If
             Else
                 CurrentSchedule = Nothing
                 If Match IsNot Nothing Then
                     Loader.RemoveSchedule(Match.Name)
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(ScheduleFile), AddressOf ScheduleLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(ScheduleFile), AddressOf ScheduleLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 ElseIf SurelyLoaded Then
                     Throw New Exception("Could not find the schedule " & FormatConverter.ExtractFileName(ScheduleFile, False) & ". It may not be loaded yet.")
                 Else
-                    AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(ScheduleFile), AddressOf ScheduleLinesLoaded, Nothing)
+                    AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(ScheduleFile), AddressOf ScheduleLinesLoaded, Nothing)
                     'varLoadingGraphics.Spin(50, 10)
                 End If
             End If
@@ -2558,7 +2537,7 @@ Public Module UserInterface
         'Private SC As SynchronizationContext = SynchronizationContext.Current
         Private TemplateNameToSelectAfterReload As String = Nothing
         'Private WithEvents SlideTimer As New Timers.Timer(1000 / 60)
-        Public Sub New(Parent As MultiTabWindow)
+        Public Sub New(Parent As MultitabWindow)
             MyBase.New(Parent)
             'SlideTimer.AutoReset = False
             With TemplateListContainer
@@ -2587,11 +2566,11 @@ Public Module UserInterface
             If Viewer.VerifyDiscard Then AddNew()
         End Sub
         Private Sub AddNew()
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.CreateFile(TemplateEntry.BaseDirectory, "New Template.txt", True, FormatConverter.GetBytesFromString("//meta" & vbNewLine & "$meta: %desc%==This template does not have a description yet && %category%==User" & vbNewLine & "//schedules" & vbNewLine), TemplateEntry.BaseDirectory), AddressOf AddNew_Finished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateFile(TemplateEntry.BaseDirectory, "New Template.txt", True, FormatConverter.GetBytesFromString("//meta" & vbNewLine & "$meta: %desc%==This template does not have a description yet && %category%==User" & vbNewLine & "//schedules" & vbNewLine), TemplateEntry.BaseDirectory), AddressOf AddNew_Finished, Nothing)
         End Sub
-        Private Sub ReloadList()
+        Public Sub ReloadList()
             Viewer.ChangesMade = False
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ListFiles(TemplateEntry.BaseDirectory), AddressOf ReloadFinished, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ListFiles(TemplateEntry.BaseDirectory), AddressOf ReloadFinished, Nothing)
         End Sub
         Private Sub Viewer_ChangesSaved(Sender As Object, e As EventArgs) Handles Viewer.ChangesSaved, Viewer.TemplateDeleted
             ReloadList()
@@ -2608,13 +2587,15 @@ Public Module UserInterface
             Dim Files() As String = DirectCast(e.Result, String())
             'Dim ObjArray(Files.Count - 1) As Object
             TemplateList.Clear()
+            Dim ActiveTemplateName As String = Nothing
+            If ActiveTemplate IsNot Nothing Then ActiveTemplateName = ActiveTemplate.Name
             Dim iLast As Integer = Files.Count - 1
             If iLast >= 0 Then
                 For i As Integer = 0 To iLast
                     'ObjArray(i) = FormatConverter.ExtractFileName(Files(i), False)
                     Dim TemplateName As String = IO.Path.GetFileNameWithoutExtension(Files(i))
                     'If Loader.LookupTemplate(TemplateName) Is Nothing Then Loader.AddTemplate(Files(i))
-                    Dim NewItem As New ScrollableListLabel With {.Value = New ScrollableListLabelValue(TemplateName)}
+                    Dim NewItem As New ScrollableListLabel With {.Value = New ScrollableListLabelValue(TemplateName), .IsActive = (TemplateName = ActiveTemplateName)}
                     If ActiveTemplate IsNot Nothing AndAlso TemplateName = ActiveTemplate.Name Then NewItem.IsActive = True
                     TemplateList.Add(NewItem)
                 Next
@@ -2632,7 +2613,7 @@ Public Module UserInterface
         End Sub
         Protected Overrides Sub OnTabShown(e As EventArgs)
             MyBase.OnTabShown(e)
-            Header.CurrentDirectiry = {HeaderControl.Views.Overview, HeaderControl.Views.TemplateBrowser}
+            Header.CurrentDirectory = {HeaderControl.ApplicationView.Overview, HeaderControl.ApplicationView.TemplateBrowser}
             Viewer.CurrentTemplate = Viewer.CurrentTemplate
         End Sub
         Protected Overrides Sub OnSizeChanged(e As EventArgs)
@@ -2665,13 +2646,13 @@ Public Module UserInterface
     Public Class TemplateViewer
         Inherits Control
         Private varCurrentTemplate As TemplateEntry = Nothing
-        Private varPadding As New Padding(10)
-        Private varUseCompatibleTextRendering As Boolean = True, varChangesMade As Boolean = False
+        'Private varPadding As New Padding(10)
+        Private varChangesMade As Boolean = False
         Private varLoadingSurface As New PictureBox, CancelButton, SaveButton As New PictureBox
         Private varLoadingGraphics As LoadingGraphics(Of PictureBox)
-        Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
-        Private ElementBrush As SolidBrush
-        Private varElementColor As Color = Color.FromArgb(200, 200, 200)
+        'Private InnerRect As Rectangle = New Rectangle(New Point(varPadding.Left, varPadding.Top), New Size(Width - varPadding.Left - varPadding.Right, 100))
+        'Private ElementBrush As SolidBrush
+        'Private varElementColor As Color = Color.FromArgb(200, 200, 200)
         Private PropertiesListContainer, ScheduleListContainer As AutoSizedContainer
         Private WithEvents PropertiesList As New PropertyList
         Private WithEvents SchedulesInTemplateList As New SchedulesInTemplateList
@@ -2715,14 +2696,13 @@ Public Module UserInterface
             For Each Item As ChildComponentInformation In e.SelectedItems
                 If SchedulesInTemplateList.Items.Find(Function(x As SchedulesInTemplateListItem) As Boolean
                                                           Return (x.Value.Name = Item.Name)
-                                                      End Function) IsNot Nothing Then
-                    ' Ignore if already in
-                Else
+                                                      End Function) Is Nothing Then
                     Dim NewInfo As ScheduleInformation = DirectCast(Item, ScheduleInformation).Copy
                     SchedulesInTemplateList.Add(New SchedulesInTemplateListItem(New SchedulesInTemplateListItemValue(NewInfo)) With {.Index = SchedulesInTemplateList.Items.Count})
-                    AddHandler SchedulesInTemplateList.Items.Last.RemoveClicked, AddressOf SchedulesInTemplateList_RemoveClicked
-                    AddHandler SchedulesInTemplateList.Items.Last.EditClicked, AddressOf SchedulesInTemplateList_EditClicked
-                    ' TODO: Remove handlers before clearing list
+                    With SchedulesInTemplateList.Items.Last
+                        AddHandler .RemoveClicked, AddressOf SchedulesInTemplateList_RemoveClicked
+                        AddHandler .EditClicked, AddressOf SchedulesInTemplateList_EditClicked
+                    End With
                     ChangesMade = True
                 End If
             Next
@@ -2888,6 +2868,7 @@ Public Module UserInterface
                 .Parent = Me
                 .SetTotalSize(New Size(Width, 252 + .HeaderHeight))
                 .AddHeaderControl({My.Resources.DeleteIconDefault, My.Resources.DeleteIconHover, My.Resources.DeleteIconPress}, AddressOf DeleteTemplate_Clicked)
+                .AddHeaderControl({My.Resources.SetActiveDefault, My.Resources.SetActiveHover, My.Resources.SetActivePress}, AddressOf SetActive_Clicked)
             End With
             ScheduleListContainer = New AutoSizedContainer
             With ScheduleListContainer
@@ -2913,11 +2894,17 @@ Public Module UserInterface
             CurrentTemplate = Nothing
             Me.Parent = Parent
         End Sub
+        Private Sub SetActive_Clicked(Sender As Object, e As EventArgs)
+            If VerifyDiscard() Then
+                SetActiveTemplate(CurrentTemplate)
+                TemplatesTab.ReloadList()
+            End If
+        End Sub
         Private Sub DeleteTemplate_Clicked(Sender As Object, e As EventArgs)
             If CurrentTemplate.Schedules.Count = 0 OrElse MsgBox("Are you sure you want to delete this template?" & vbNewLine & "This will not delete the schedules it contains.", MsgBoxStyle.OkCancel, "Confirm deletion of template") = MsgBoxResult.Ok Then DeleteTemplate(CurrentTemplate.GetFullFilePath)
         End Sub
         Private Sub DeleteTemplate(Path As String)
-            AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.DeleteFile(Path), AddressOf OnTemplateDeleted, Nothing)
+            AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.DeleteFile(Path), AddressOf OnTemplateDeleted, Nothing)
         End Sub
         Private Sub OnTemplateDeleted(e As FileOperationEventArgs)
             If e.ErrorOccurred Then
@@ -3023,9 +3010,9 @@ Public Module UserInterface
                         Next
                     End If
                     If varCurrentTemplate.GetFullFilePath <> OldDirectory Then ' TODO: Use Rename file operation instead
-                        AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.MoveFile(OldDirectory, .GetFullFilePath, False), AddressOf MoveFinished, Nothing)
+                        AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.MoveFile(OldDirectory, .GetFullFilePath, False), AddressOf MoveFinished, Nothing)
                     Else
-                        AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(.GetFullFilePath, .OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                        AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(.GetFullFilePath, .OutputFileContents), AddressOf OverwriteFinished, Nothing)
                     End If
                 End With
             End If
@@ -3034,7 +3021,7 @@ Public Module UserInterface
             If Result.ErrorOccurred Then
                 MsgBox("An unexpected error occurred (code 4)")
             Else
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.OverwriteFile(varCurrentTemplate.GetFullFilePath, varCurrentTemplate.OutputFileContents), AddressOf OverwriteFinished, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.OverwriteFile(varCurrentTemplate.GetFullFilePath, varCurrentTemplate.OutputFileContents), AddressOf OverwriteFinished, Nothing)
             End If
         End Sub
         Private Sub OverwriteFinished(Result As FileOperationEventArgs)
@@ -3068,7 +3055,7 @@ Public Module UserInterface
             ElseIf SurelyLoaded Then
                 Throw New Exception("Could not load the specified template.")
             Else
-                AsyncFileReader.Queue.AddOperation(AsyncFileReader.Queue.FileOperation.ReadLines(TemplateFile), AddressOf TemplateLinesLoaded, Nothing)
+                AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.ReadLines(TemplateFile), AddressOf TemplateLinesLoaded, Nothing)
                 varLoadingGraphics.Spin(50, 10)
             End If
         End Sub
@@ -3080,6 +3067,7 @@ Public Module UserInterface
         End Sub
     End Class
     Public Class ValidateEditEventArgs
+        Inherits EventArgs
         Public Valid, Cancel As Boolean
         Public InvalidMessage As String
         Public OldContent, NewContent As Object
@@ -3099,7 +3087,7 @@ Public Module UserInterface
         Private varForeColor As Color = Color.White
         Private varIconsAreaColor As Color = Color.FromArgb(200, 200, 200)
         Private varIconSize As New Size(20, 16)
-        Private IconsAreaWidth As Integer = 80, varLineSpacing As Integer = 5, X As Integer = 30, varGoalX As Integer = 30, CoverWidth As Integer = IconsAreaWidth, CoverInitialWidth As Integer = IconsAreaWidth, CoverGoalWidth As Integer = 0, SeparatorThickness As Integer = 4
+        Private IconsAreaWidth As Integer = 80, varLineSpacing As Integer = 5, X As Integer = 30, varGoalX As Integer = 30, CoverWidth As Integer = IconsAreaWidth, CoverInitialWidth As Integer = IconsAreaWidth, CoverGoalWidth As Integer = 0 ', SeparatorThickness As Integer = 4
         Private IconsInitialLeft(), IconsGoalLeft() As Integer
         Private IconsRect As Rectangle
         Private Actions As New List(Of ControlButton)
@@ -3116,6 +3104,13 @@ Public Module UserInterface
         Private IsEditing As Boolean = False
         Private varEditErrorMessage As String = "No error message specified"
         Private varValidateEditFunction As Func(Of Object, ValidateEditEventArgs, ValidateEditEventArgs) = Nothing
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            ActionsFadeTimer.Dispose()
+            LinePen.Dispose()
+            OpacityBrush.Dispose()
+            GradientBrush.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
         Public Property EditErrorMessage As String
             Get
                 Return varEditErrorMessage
@@ -3224,7 +3219,8 @@ Public Module UserInterface
         End Property
         Public Overrides ReadOnly Property DefaultValue As ScrollableListItemValue
             Get
-                Return New PropertyValueInfo("No template selected", "Test", "")
+                'Return New PropertyValueInfo("No template selected", "Test", "")
+                Return ScrollableListItemValue.Empty
             End Get
         End Property
         Public Sub New(Parent As IListElementFontProvider)
@@ -3418,7 +3414,7 @@ Public Module UserInterface
                     Dim OpacityColor As Color = Color.FromArgb(255 - CInt((1 - (CoverWidth / IconsRect.Width)) * 255), varIconsAreaColor)
                     OpacityBrush.Color = OpacityColor
                     For Each Action As ControlButton In Actions
-                        Dim IconRectangle As New Rectangle(Action.Location, New Size(16, 16))
+                        'Dim IconRectangle As New Rectangle(Action.Location, New Size(16, 16))
                         If HoveredAction IsNot Nothing AndAlso ReferenceEquals(Action, HoveredAction) Then
                             .DrawImageUnscaled(Action.HoverIcon, Action.Location)
                         Else
@@ -3449,7 +3445,7 @@ Public Module UserInterface
             If GradientBrush IsNot Nothing Then
                 GradientBrush.Dispose()
             End If
-            Dim SecondColor As Color = Color.FromArgb(28, 127, 171)
+            'Dim SecondColor As Color = Color.FromArgb(28, 127, 171)
             GradientBrush = New Drawing2D.LinearGradientBrush(Point.Empty, New Point(Width, Height), BackColor, Color.FromArgb(28, 127, 171))
             AdjustRectangles(True)
         End Sub
@@ -3523,14 +3519,14 @@ Public Module UserInterface
                     varLocation.X = value
                 End Set
             End Property
-            Public Property Top As Integer
-                Get
-                    Return varLocation.Y
-                End Get
-                Set(value As Integer)
-                    varLocation.Y = value
-                End Set
-            End Property
+            'Public Property Top As Integer
+            '    Get
+            '        Return varLocation.Y
+            '    End Get
+            '    Set(value As Integer)
+            '        varLocation.Y = value
+            '    End Set
+            'End Property
             Public Property DefaultIcon As Image
                 Get
                     Return varIconDefault
@@ -3642,9 +3638,9 @@ Public Module UserInterface
             MyBase.New(New ScheduleInformation("Default name", False))
         End Sub
     End Class
-    Public MustInherit Class ItemsInComponentList(Of InformationType As ChildComponentInformation, ValueType As {New, ItemsInComponentListItemValue(Of InformationType)}, ItemType As {New, ItemsInComponentListItem(Of InformationType, ValueType)})
-        Inherits ScrollableList(Of ItemType)
-        Public Sub New()
+    Public MustInherit Class ItemsInComponentList(Of TInformation As ChildComponentInformation, TValue As {New, ItemsInComponentListItemValue(Of TInformation)}, TItem As {New, ItemsInComponentListItem(Of TInformation, TValue)})
+        Inherits ScrollableList(Of TItem)
+        Protected Sub New()
             BackColor = ColorHelper.Multiply(ApplicationBackColor, 0.7)
             With ScrollHandle
                 ScrollHandle.RoundedEnds = False
@@ -3653,30 +3649,25 @@ Public Module UserInterface
         End Sub
     End Class
 
-    Public MustInherit Class ItemsInComponentListItem(Of InformationType As ChildComponentInformation, ValueType As {New, ItemsInComponentListItemValue(Of InformationType)})
+    Public MustInherit Class ItemsInComponentListItem(Of TInformation As ChildComponentInformation, TValue As {New, ItemsInComponentListItemValue(Of TInformation)})
         Inherits ScrollableListItem
         Private varTitleSize As Size
         Protected FillBrush As New SolidBrush(Color.White)
         Protected CheckPath As New Drawing2D.GraphicsPath
         Private varIsHovering, varIsHoveringCheck As Boolean
-        Private varTitle As String
         Private varButtonList As New List(Of ItemButton)
-        'Private varActive As Boolean
         Private varCheckBoxSize As New Size(15, 15)
         Private varDisableEditOnNoMatch As Boolean = True
         Protected GradientBrush As Drawing2D.LinearGradientBrush
         Public Event EditClicked(Sender As Object, e As EventArgs)
         Public Event RemoveClicked(Sender As Object, e As EventArgs)
-        Public Sub New()
+        Protected Sub New()
             Height = 31
-            'Dim OffsetPathX As Integer = 11
-            'Dim OffsetPathY As Integer = 12
-            'CheckPath.AddPolygon(New Point() {New Point(0 + OffsetPathX, 2 + OffsetPathY), New Point(1 + OffsetPathX, 1 + OffsetPathY), New Point(4 + OffsetPathX, 4 + OffsetPathY), New Point(8 + OffsetPathX, 0 + OffsetPathY), New Point(9 + OffsetPathX, 1 + OffsetPathY), New Point(4 + OffsetPathX, 6 + OffsetPathY)})
             CheckPath.AddPolygon(GetCheckPolygon(True))
             AddButton(New ItemButton(My.Resources.RemoveIconDefault, My.Resources.RemoveIconHover, Me, AddressOf OnRemoveClicked, "Remove"))
             AddButton(New ItemButton(My.Resources.EditIconDefault, My.Resources.EditIconHover, Me, AddressOf OnEditClicked, "Edit"))
             BackColor = ColorHelper.Multiply(ApplicationBackColor, 0.9)
-            Value = DirectCast(DefaultValue, ItemsInComponentListItemValue(Of InformationType))
+            Value = DirectCast(DefaultValue, ItemsInComponentListItemValue(Of TInformation))
         End Sub
         Protected ReadOnly Property CheckBoxSize As Size
             Get
@@ -3746,11 +3737,11 @@ Public Module UserInterface
                 Invalidate()
             End Set
         End Property
-        Public Shadows Property Value As ItemsInComponentListItemValue(Of InformationType)
+        Public Shadows Property Value As ItemsInComponentListItemValue(Of TInformation)
             Get
-                Return DirectCast(MyBase.Value, ItemsInComponentListItemValue(Of InformationType))
+                Return DirectCast(MyBase.Value, ItemsInComponentListItemValue(Of TInformation))
             End Get
-            Set(value As ItemsInComponentListItemValue(Of InformationType))
+            Set(value As ItemsInComponentListItemValue(Of TInformation))
                 MyBase.Value = value
                 IsActive = value.Active
             End Set
@@ -4020,14 +4011,14 @@ Public Module UserInterface
             End Property
         End Class
     End Class
-    Public MustInherit Class ItemsInComponentListItemValue(Of InformationType As ChildComponentInformation)
+    Public MustInherit Class ItemsInComponentListItemValue(Of TInformation As ChildComponentInformation)
         Inherits ScrollableListItemValue
-        Private varInformation As InformationType
-        Public Property Information As InformationType
+        Private varInformation As TInformation
+        Public Property Information As TInformation
             Get
                 Return varInformation
             End Get
-            Set(value As InformationType)
+            Set(value As TInformation)
                 varInformation = value
             End Set
         End Property
@@ -4047,7 +4038,7 @@ Public Module UserInterface
                 varInformation.Active = value
             End Set
         End Property
-        Public Sub New(ByVal InformationCopy As InformationType, Optional Data As Object = Nothing)
+        Protected Sub New(ByVal InformationCopy As TInformation, Optional Data As Object = Nothing)
             MyBase.New(Data)
             varInformation = InformationCopy
         End Sub
@@ -4068,6 +4059,7 @@ Public Module UserInterface
         End Sub
     End Class
     Public Class RoutineItemValueChangedEventArgs
+        Inherits EventArgs
         Public SenderItem As RoutinesInScheduleListItem
         Public Trigger As ValueChangedEventArgs
         Public Sub New(SenderItem As RoutinesInScheduleListItem, Trigger As ValueChangedEventArgs)
@@ -4254,7 +4246,6 @@ Public Module UserInterface
             If PathPen IsNot Nothing Then PathPen.Dispose()
             If FillBrush IsNot Nothing Then FillBrush.Dispose()
             If GradientBrush IsNot Nothing Then GradientBrush.Dispose()
-
             MyBase.Dispose(disposing)
         End Sub
     End Class
@@ -4269,6 +4260,7 @@ Public Module UserInterface
         End Sub
     End Class
     Public Class TaskItemValueChangedEventArgs
+        Inherits EventArgs
         Public SenderItem As TasksInRoutineListItem
         Public Trigger As ValueChangedEventArgs
         Public Sub New(SenderItem As TasksInRoutineListItem, Trigger As ValueChangedEventArgs)
@@ -4308,6 +4300,13 @@ Public Module UserInterface
             For Each Argument As Object In Value.Information.Arguments
                 InformationArguments.Add(Argument)
             Next
+        End Sub
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            LinePen.Dispose()
+            OpacityBrush.Dispose()
+            ArgumentsList.Dispose()
+            ' TODO: Try disposing DenseFont (even though it's supposed to be cached)
+            MyBase.Dispose(disposing)
         End Sub
         Private Sub ArgumentsList_ArgumentRemoved(Sender As Object, e As ArgumentRemovedEventArgs) Handles ArgumentsList.ItemRemoveClicked
             OnArgumentRemoved(e)
@@ -4357,8 +4356,8 @@ Public Module UserInterface
             MyBase.OnSizeChanged(e)
             If ArgumentsList IsNot Nothing Then
                 With ArgumentsList
-                    .Size = New Size(200, 110 - 31 - 10)
-                    .Location = New Point(Width - .Width, 51 + 5)
+                    .Size = New Size(260, 110 - 31 - 10)
+                    .Location = New Point(Width - .Width - 5, 51 + 5)
                 End With
                 Dim AddArgumentSize As Size = TextRenderer.MeasureText("Add an argument...", DenseFont)
                 Dim AddArgumentLocation As New Point(ArgumentsList.Left, 31 + ((ArgumentsList.Top - 31 - AddArgumentSize.Height) \ 2))
@@ -4477,6 +4476,8 @@ Public Module UserInterface
                 .FillRectangle(GradientBrush, ArgumentsRectangle)
                 Dim LeftRect As New Rectangle(New Point(0, 31), New Size(Width - ArgumentsRectangle.Width - 1, Height - 31))
                 .FillRectangle(GradientBrush, LeftRect)
+                Dim OptionsLocation As New Point(5, LeftRect.Top + 5)
+                TextRenderer.DrawText(pe.Graphics, "Options", DenseFont, OptionsLocation, Color.White)
                 LinePen.DashStyle = Drawing2D.DashStyle.Solid
                 LinePen.Color = ColorHelper.Multiply(GradientBrush.LinearColors(0), 0.95)
                 .DrawLine(LinePen, New Point(LeftRect.Width, LeftRect.Top), New Point(LeftRect.Width, LeftRect.Bottom))
@@ -4511,7 +4512,7 @@ Public Module UserInterface
                     .FillPolygon(FillBrush, GetCheckPolygon(False, New Point(WaitCheck.Left + 3, WaitCheck.Top + 4)))
                 End If
 
-                Dim Margin As Integer = (31 - CheckBoxSize.Height) \ 2
+                ' Dim Margin As Integer = (31 - CheckBoxSize.Height) \ 2
                 Dim TextSize As Size = TextRenderer.MeasureText(pe.Graphics, "RUN ASYNCRHONOUSLY", DenseFont)
                 FillBrush.Color = Color.White
                 TextRenderer.DrawText(pe.Graphics, "RUN ASYNCHRONOUSLY", DenseFont, New Point(AsyncCheck.Right + 5, AsyncCheck.Top + (AsyncCheck.Height - TextSize.Height) \ 2 + 1), Color.White)
@@ -4535,6 +4536,7 @@ Public Module UserInterface
         End Sub
     End Class
     Public Class ArgumentRemovedEventArgs
+        Inherits EventArgs
         Public SenderItem As ArgumentsListItem
         Public Sub New(SenderItem As ArgumentsListItem)
             Me.SenderItem = SenderItem
@@ -4544,7 +4546,6 @@ Public Module UserInterface
         Inherits ScrollableList(Of ArgumentsListItem)
         Protected Friend Event Scrolled(Sender As ArgumentsList, e As EventArgs)
         Public Event ItemRemoveClicked(Sender As Object, e As ArgumentRemovedEventArgs)
-        'Private GradientColors() As Color = {ColorHelper.Multiply(ApplicationBackColor, 0.8), ColorHelper.Multiply(ApplicationBackColor, 0.5)}
         Public Sub New()
             AllowWheel = False
             ScrollHandle.RoundedEnds = False
@@ -4552,11 +4553,6 @@ Public Module UserInterface
             BackColor = ColorHelper.Multiply(Color.FromArgb(28, 127, 171), 0.6)
             ListContainer.BackColor = ApplicationBackColor
         End Sub
-        'Protected Friend Function GetItemGradientBrush(TopInListContainer As Integer) As Drawing2D.LinearGradientBrush
-        '    Dim GradientTop As Integer = (-ListContainer.Top) - TopInListContainer
-        '    Dim GradientBottom As Integer = GradientTop + Height
-        '    Return New Drawing2D.LinearGradientBrush(New Point(0, GradientTop), New Point(0, GradientBottom), GradientColors(0), GradientColors(1))
-        'End Function
         Private Sub WheelScrolled(Sender As Object, e As EventArgs) Handles ScrollHandle.ScrollValueChanged
             RaiseEvent Scrolled(Me, EventArgs.Empty)
         End Sub
@@ -4571,15 +4567,6 @@ Public Module UserInterface
             RemoveHandler Item.RemoveClicked, AddressOf Item_RemoveClicked
             MyBase.RemoveItemHandlers(Item)
         End Sub
-        'Private Sub ListContainer_Paint(Sender As Object, e As PaintEventArgs) Handles ListContainer.Paint
-        '    With e.Graphics
-        '        Dim AdjustedRectangle As New Rectangle(New Point(0, -ListContainer.Top), New Size(ListContainer.Width, ClientSize.Height))
-        '        .SetClip(AdjustedRectangle)
-        '        Using GradientBrush As Drawing2D.LinearGradientBrush = GetItemGradientBrush(-ListContainer.Top)
-        '            .FillRectangle(GradientBrush, AdjustedRectangle)
-        '        End Using
-        '    End With
-        'End Sub
     End Class
     Public Class ArgumentsListItem
         Inherits ScrollableListItem
@@ -4601,14 +4588,27 @@ Public Module UserInterface
             UpdateStyles()
             'BackColor = ColorHelper.Multiply(ApplicationBackColor, 0.6)
             Me.Value = Value
+            RefreshRemovePath()
+        End Sub
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            FillBrush.Dispose()
+            LinePen.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
+        Protected Overrides Sub OnSizeChanged(e As EventArgs)
+            MyBase.OnSizeChanged(e)
+            RefreshRemovePath()
+        End Sub
+        Private Sub RefreshRemovePath()
+            RemovePath = {New Point(15, 10), New Point(13, 8), New Point(14, 7), New Point(16, 9), New Point(18, 7), New Point(19, 8), New Point(17, 10), New Point(19, 12), New Point(18, 13), New Point(16, 11), New Point(14, 13), New Point(13, 12)}
             For i As Integer = 0 To RemovePath.Count - 1
-                RemovePath(i).Offset(New Point(170, 0))
+                RemovePath(i).Offset(New Point(Width - 24, 0))
             Next
         End Sub
         Private Function CheckRemoveHover(ClientMouseLocation As Point) As Boolean
             Dim ActualArea As New Size(6, 6)
             Dim MinXY As New Point(13, 7)
-            MinXY.Offset(170, 0)
+            MinXY.Offset(Width - 24, 0)
             Dim AcceptableRect As New Rectangle(MinXY, ActualArea)
             AcceptableRect.Inflate(3, 3)
             Return FormatConverter.PointIsInRectangle(ClientMouseLocation, AcceptableRect)
@@ -4716,20 +4716,26 @@ Public Module UserInterface
         Inherits Tab
         Implements IListElementFontProvider
 
-        Private LayoutHelper As New FormLayoutTools(Me)
-        Private varForeColor As Color = Color.White
+        'Private LayoutHelper As New FormLayoutTools(Me)
+        'Private varForeColor As Color = Color.White
         Private varStaticLabelFont As Font = RalewayFonts.GetFont(RalewayFontCollection.FontVariant.Bold, 14, FontStyle.Bold)
         Private varStatusLabelFont As Font = RalewayFonts.GetFont(RalewayFontCollection.FontVariant.Regular, 14, FontStyle.Regular)
         Private varEditButtonFont As Font = RalewayFonts.GetFont(RalewayFontCollection.FontVariant.Regular, 9.5, FontStyle.Regular)
         Private varLineHeight As Integer = 50
         Private varLineSpacing As Integer = 15
         Private LinePen As New Pen(Color.White)
+        Private FillBrush As New SolidBrush(Color.White)
         Private InnerRect As New Rectangle(Point.Empty, New Size(400, 400))
         Private varLabels As New List(Of ListElement)
-        Private EditButtons As New List(Of EditButton)
+        'Private EditButtons As New List(Of EditButton)
         Private varHoveredEditButton As EditButton = Nothing
         Private ShortcutRects(4) As Rectangle
         Private HoveredShortcutIndex As Integer = -1
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            LinePen.Dispose()
+            FillBrush.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
         Public ReadOnly Property Labels As List(Of ListElement) Implements IListElementFontProvider.Labels
             Get
                 Return varLabels
@@ -4770,42 +4776,39 @@ Public Module UserInterface
                 varHoveredEditButton = value
             End Set
         End Property
-        Public Sub New(Parent As MultiTabWindow)
+        Public Sub New(Parent As MultitabWindow)
             MyBase.New(Parent)
             'LinePen.DashStyle = Drawing2D.DashStyle.Dot
             LinePen.DashPattern = New Single() {1, 2}
             ResizeRedraw = True
             BackColor = DefaultBackColor
+            Labels.Add(New ListElement(Me, "Status", "Paused"))
+            Labels.Last.AddEditButton("Start", AddressOf StartStopService, True)
+            Labels.Add(New ListElement(Me, "Template", "Loading..."))
+            Labels.Last.AddEditButton("Change", AddressOf ChangeTemplate, Nothing)
             With InnerRect
-                Dim ResourceHeight As Integer = My.Resources.Header.Height
+                .Height = 250
+                Dim ResourceHeight As Integer = Header.Height
                 Dim X As Integer = (Width - .Width) \ 2
                 Dim Y As Integer = (Height - .Height - ResourceHeight) \ 2 + ResourceHeight
                 .Location = New Point(X, Y)
             End With
-            Labels.Add(New ListElement(Me, "Status", "Paused"))
-            Labels.Last.AddEditButton("Start", AddressOf StartStopService, True)
-            Labels.Add(New ListElement(Me, "Template", "SomeTemplate"))
-            Labels.Last.AddEditButton("Change", AddressOf ChangeTemplate, Nothing)
 
             Dim PicSpacing As Integer = 20
             Dim PicsArea As New Size(ShortcutRects.Count * 32 + (ShortcutRects.Count - 1) * PicSpacing, 32)
-            Dim PicsAreaLocation As New Point((Width - PicsArea.Width) \ 2, (Height \ 2))
+            Dim PicsAreaLocation As New Point((Width - PicsArea.Width) \ 2, (Height \ 2) + 70)
             Dim PicsRect As New Rectangle(PicsAreaLocation, PicsArea)
             For i As Integer = 0 To ShortcutRects.Count - 1
                 ShortcutRects(i) = New Rectangle(New Point(PicsRect.X + i * (32 + PicSpacing), PicsRect.Top), New Size(32, 32))
             Next
-            AddHandler PSEngine.Paused, AddressOf PSEngine_Paused
+            AddHandler PSEngine.Paused, AddressOf Globals.PSEngine_Paused
             Invalidate()
-        End Sub
-        Private Sub PSEngine_Paused(Sender As Object, e As ExecutionPausedEventArgs)
-            Labels(0).SetStatusText("Paused")
         End Sub
         Protected Overrides Sub OnSizeChanged(e As EventArgs)
             MyBase.OnSizeChanged(e)
             With InnerRect
-                Dim ResourceHeight As Integer = My.Resources.Header.Height
                 Dim X As Integer = (Width - .Width) \ 2
-                Dim Y As Integer = (Height - .Height - ResourceHeight) \ 2 + ResourceHeight
+                Dim Y As Integer = (Height - .Height - Header.Height) \ 2 + Header.Height
                 .Location = New Point(X, Y)
             End With
             If ShortcutRects IsNot Nothing Then
@@ -4825,42 +4828,45 @@ Public Module UserInterface
         Protected Overrides Sub OnPaint(e As PaintEventArgs)
             MyBase.OnPaint(e)
             Dim iLast As Integer = Labels.Count - 1
-            e.Graphics.SetClip(ClientRectangle)
-            e.Graphics.FillRectangle(ApplicationGradientBrush, ClientRectangle)
-            e.Graphics.SetClip(InnerRect)
-            For i As Integer = 0 To iLast
-                With Labels(i)
-                    Dim LabelRect As New Rectangle(New Point(InnerRect.Left, i * (varLineHeight + varLineSpacing) + InnerRect.Top), New Size(InnerRect.Width, varLineHeight))
-                    TextRenderer.DrawText(e.Graphics, .LabelText, StaticLabelFont(ListElementFontSize.Regular), .GetLabelRectangle(LabelRect.Location), varForeColor)
-                    TextRenderer.DrawText(e.Graphics, .StatusText, StatusLabelFont(ListElementFontSize.Regular), .GetStatusRectangle(LabelRect.Right, LabelRect.Top), varForeColor)
-                    e.Graphics.DrawLine(LinePen, New Point(LabelRect.Left + 5, LabelRect.Bottom), New Point(LabelRect.Right - 5, LabelRect.Bottom))
-                    If .HasEditButtons Then
-                        For Each EditButton As EditButton In .GetEditButtons(LabelRect.Bottom - 23, LabelRect.Right - 5)
-                            Dim EditButtonRect As Rectangle = EditButton.Rectangle
-                            TextRenderer.DrawText(e.Graphics, EditButton.Text, EditButtonFont(ListElementFontSize.Regular), EditButton.Rectangle, varForeColor)
-                            If HoveredEditButton IsNot Nothing AndAlso ReferenceEquals(EditButton, HoveredEditButton) Then
-                                With EditButton.Rectangle
-                                    e.Graphics.DrawLine(LinePen, New Point(.X + 2, .Bottom), New Point(.Right - 1, .Bottom))
-                                End With
-                            End If
-                        Next
+            With e.Graphics
+                .SetClip(ClientRectangle)
+                .FillRectangle(ApplicationGradientBrush, ClientRectangle)
+                .SetClip(InnerRect)
+                For i As Integer = 0 To iLast
+                    With Labels(i)
+                        Dim LabelRect As New Rectangle(New Point(InnerRect.Left, i * (varLineHeight + varLineSpacing) + InnerRect.Top), New Size(InnerRect.Width, varLineHeight))
+                        TextRenderer.DrawText(e.Graphics, .LabelText, StaticLabelFont(ListElementFontSize.Regular), .GetLabelRectangle(LabelRect.Location), .ForeColor)
+                        TextRenderer.DrawText(e.Graphics, .StatusText, StatusLabelFont(ListElementFontSize.Regular), .GetStatusRectangle(LabelRect.Right, LabelRect.Top), .ForeColor)
+                        e.Graphics.DrawLine(LinePen, New Point(LabelRect.Left + 5, LabelRect.Bottom), New Point(LabelRect.Right - 5, LabelRect.Bottom))
+                        If .HasEditButtons Then
+                            For Each EditButton As EditButton In .GetEditButtons(LabelRect.Bottom - 23, LabelRect.Right - 3)
+                                'Dim EditButtonRect As Rectangle = EditButton.Rectangle
+                                TextRenderer.DrawText(e.Graphics, EditButton.Text, EditButtonFont(ListElementFontSize.Regular), EditButton.Rectangle, .ForeColor)
+                                If HoveredEditButton IsNot Nothing AndAlso ReferenceEquals(EditButton, HoveredEditButton) Then
+                                    With EditButton.Rectangle
+                                        e.Graphics.DrawLine(LinePen, New Point(.X + 2, .Bottom), New Point(.Right - 3, .Bottom))
+                                    End With
+                                End If
+                            Next
+                        End If
+                    End With
+                Next
+                .SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+                .SetClip(ClientRectangle)
+                For n As Integer = 0 To ShortcutRects.Count - 1
+                    .DrawImage(Header.ViewImages(n), ShortcutRects(n))
+                    If n = HoveredShortcutIndex Then
+                        Dim CircleSize As New Size(7, 7)
+                        Dim CircleLocation As New Point((ShortcutRects(n).Width - CircleSize.Width) \ 2 + ShortcutRects(n).X, ShortcutRects(n).Bottom + 4)
+                        Dim CircleRect As New Rectangle(CircleLocation, CircleSize)
+                        .FillEllipse(FillBrush, CircleRect)
                     End If
-                End With
-            Next
-            For n As Integer = 0 To ShortcutRects.Count - 1
-                e.Graphics.SetClip(ShortcutRects(n))
-                e.Graphics.DrawImage(Header.ViewImages(n), ShortcutRects(n))
-                If n = HoveredShortcutIndex Then
-                    Dim LineRectangle As New Rectangle(New Point(ShortcutRects(n).X, ShortcutRects(n).Bottom + 4), New Size(ShortcutRects(n).Width, 5))
-                    e.Graphics.SetClip(LineRectangle)
-                    e.Graphics.Clear(Color.White)
-                End If
-            Next
-            ' End Using
+                Next
+            End With
         End Sub
         Protected Overrides Sub OnTabShown(e As EventArgs)
             MyBase.OnTabShown(e)
-            Header.CurrentDirectiry = {HeaderControl.Views.Overview}
+            Header.CurrentDirectory = {HeaderControl.ApplicationView.Overview}
         End Sub
         Protected Overrides Sub OnMouseMove(e As MouseEventArgs) Implements IListElementFontProvider.CheckMouseLocation
             MyBase.OnMouseMove(e)
@@ -4905,21 +4911,12 @@ Public Module UserInterface
         End Sub
 #Region "Click actions"
         Private Sub StartStopService(Sender As EditButton, ByVal Start As Object)
-            Dim StartBool As Boolean = DirectCast(Start, Boolean)
-            If StartBool AndAlso ActiveTemplate IsNot Nothing Then
-                Sender.Arguments = False
-                Sender.Text = "Pause"
-                PSEngine.Start()
-                Sender.Parent.SetStatusText("Running")
-            Else
-                Sender.Arguments = True
-                Sender.Parent.SetStatusText("Pausing...")
-                Sender.Text = "Start"
-                PSEngine.RequestPause()
-            End If
+            Globals.StartStopService(DirectCast(Start, Boolean))
         End Sub
         Private Sub ChangeTemplate(Sender As EditButton, Optional ByVal State As Object = Nothing)
-            Parent.ShowTab(1)
+            If Not IsRunning Then
+                Parent.ShowTab(1)
+            End If
         End Sub
 #End Region
     End Class
@@ -4928,6 +4925,7 @@ Public Module UserInterface
         Private varLabelSize, varStatusSize As Size
         Private varEditButtons As New List(Of EditButton)
         Private varEditButtonSpacing As Integer = 10
+        Private varForeColor As Color = Color.White
         Protected Friend varStaticFontSize, varStatusFontSize, varEditButtonFontSize As ListElementFontSize
         Public ReadOnly Property Parent As IListElementFontProvider
         Public ReadOnly Property HasEditButtons As Boolean
@@ -4943,6 +4941,14 @@ Public Module UserInterface
             Next
             Return Nothing
         End Function
+        Public Property ForeColor As Color
+            Get
+                Return varForeColor
+            End Get
+            Set(value As Color)
+                varForeColor = value
+            End Set
+        End Property
         Public Function GetEditButtons(ByVal Top As Integer, ByVal LabelRight As Integer) As EditButton()
             Dim Ret(varEditButtons.Count - 1) As EditButton
             Dim LeftMost As Integer = LabelRight
@@ -4956,7 +4962,7 @@ Public Module UserInterface
             Next
             Return Ret
         End Function
-        Public ReadOnly Property EditButtons As List(Of EditButton)
+        Public ReadOnly Property UnpositionedEditButtons As List(Of EditButton)
             Get
                 Return varEditButtons
             End Get
@@ -5113,7 +5119,7 @@ Public Module UserInterface
         Friend Event DisposeRequested(Sender As Object, e As EventArgs)
         Public Event WheelScrolled(Sender As Object, e As MouseEventArgs)
         Public Event ChildDragEventReported(Target As Control, e As DragEventArgs) Implements IDragEventReporter.ChildDragEventReported
-        Private LastScrollEvent As Date
+        'Private LastScrollEvent As Date
         Public Property StaticLabelFont(ByVal FontSize As ListElementFontSize) As Font Implements IListElementFontProvider.StaticLabelFont
             Get
                 Return varFontSizes(FontSize)
@@ -5182,16 +5188,30 @@ Public Module UserInterface
             Me.Visible = Visible
         End Sub
     End Class
-    Public Class ScrollableList(Of ItemType As {ScrollableListItem, New})
+    Public Class ScrollableList(Of TItem As {ScrollableListItem, New})
         Inherits PictureBox
         Protected WithEvents ListContainer As New ListContainerControl
-        Protected WithEvents ScrollHandle As New ScrollHandleControl(Of ScrollableList(Of ItemType))
-        Private varItems As New List(Of ItemType)
-        Protected varItemSpacing As Integer
-        Protected AllowWheel As Boolean = True
+        Protected WithEvents ScrollHandle As New ScrollHandleControl(Of ScrollableList(Of TItem))
+        Private varItems As New List(Of TItem)
+        Private varItemSpacing As Integer
+        Private varAllowWheel As Boolean = True
         Public Event ItemActiveChanged(Sender As Object, e As ListItemActiveChangedEventArgs)
         Public Event ItemSelectionChanged(Sender As Object, e As ListItemSelectionChangedEventArgs)
         Public Event ScrollHandleVisibleChanged(Sender As Object, e As VisibleEventArgs)
+        Public Property AllowWheel As Boolean
+            Get
+                Return varAllowWheel
+            End Get
+            Set(value As Boolean)
+                varAllowWheel = value
+            End Set
+        End Property
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            Clear()
+            If ListContainer IsNot Nothing Then ListContainer.Dispose()
+            If ScrollHandle IsNot Nothing Then ScrollHandle.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
         Private Sub ListContainer_WheelScrolled(Sender As Object, e As MouseEventArgs) Handles ListContainer.WheelScrolled
             If AllowWheel Then
                 If varItems.Count > 0 Then
@@ -5205,7 +5225,7 @@ Public Module UserInterface
                 End If
             End If
         End Sub
-        Public Overridable Sub Add(Item As ItemType)
+        Public Overridable Sub Add(Item As TItem)
             With Item
                 If Items.Count > 0 Then
                     .Top = Items.Last.Bottom + varItemSpacing
@@ -5220,7 +5240,8 @@ Public Module UserInterface
                 AutoAdjust()
             End With
         End Sub
-        Public Overridable Sub Remove(ByRef Item As ItemType)
+        Public Overridable Sub Remove(ByRef Item As TItem)
+            RemoveItemHandlers(Item)
             RemoveHandler Item.ActiveChanged, AddressOf Item_ActiveChanged
             RemoveHandler Item.SelectedChanged, AddressOf Item_SelectedChanged
             Items.Remove(Item)
@@ -5280,7 +5301,7 @@ Public Module UserInterface
             End Get
         End Property
         Public Overloads Sub DeselectAll()
-            For Each Item As ItemType In varItems
+            For Each Item As TItem In varItems
                 Item.IsSelected = False
             Next
         End Sub
@@ -5291,7 +5312,7 @@ Public Module UserInterface
             Next
         End Sub
         Public Overloads Sub SetAllActive(ByVal Active As Boolean)
-            For Each Item As ItemType In varItems
+            For Each Item As TItem In varItems
                 Item.IsActive = Active
             Next
         End Sub
@@ -5301,12 +5322,12 @@ Public Module UserInterface
                 If Not i = ExceptIndex Then varItems(i).IsActive = Active
             Next
         End Sub
-        Protected Overridable Sub RemoveItemHandlers(ByRef Item As ItemType)
+        Protected Overridable Sub RemoveItemHandlers(ByRef Item As TItem)
             RemoveHandler Item.ActiveChanged, AddressOf Item_ActiveChanged
             RemoveHandler Item.SelectedChanged, AddressOf Item_SelectedChanged
         End Sub
         Public Sub Clear()
-            For Each Item As ItemType In Items
+            For Each Item As TItem In Items
                 RemoveItemHandlers(Item)
             Next
             ListContainer.DisposeItems()
@@ -5314,10 +5335,10 @@ Public Module UserInterface
             ScrollHandle.ScrollValue = 0
             AutoAdjust()
         End Sub
-        Public ReadOnly Property SelectedItems As List(Of ItemType)
+        Public ReadOnly Property SelectedItems As List(Of TItem)
             Get
-                Dim Ret As New List(Of ItemType)
-                For Each Item As ItemType In varItems
+                Dim Ret As New List(Of TItem)
+                For Each Item As TItem In varItems
                     If Item.IsSelected Then
                         Ret.Add(Item)
                     End If
@@ -5327,7 +5348,7 @@ Public Module UserInterface
         End Property
         Public Sub CreateItems(ArgumentsArray() As Object)
             For i As Integer = 0 To ArgumentsArray.Count - 1
-                Dim NewItem As New ItemType
+                Dim NewItem As New TItem
                 With NewItem
                     .Width = ListContainer.Width
                     .Parent = ListContainer
@@ -5342,19 +5363,19 @@ Public Module UserInterface
             ListContainer.Height = varItems.Last.Bottom
         End Sub
         Protected Sub Item_ActiveChanged(Sender As Object, e As ScrollableListItem.ItemActiveEventArgs)
-            Dim SenderItem As ItemType = DirectCast(Sender, ItemType)
+            Dim SenderItem As TItem = DirectCast(Sender, TItem)
             RaiseEvent ItemActiveChanged(Me, New ListItemActiveChangedEventArgs(SenderItem, e))
         End Sub
         Protected Sub Item_SelectedChanged(Sender As Object, e As ScrollableListItem.ItemSelectedEventArgs)
-            Dim SenderItem As ItemType = DirectCast(Sender, ItemType)
+            Dim SenderItem As TItem = DirectCast(Sender, TItem)
             RaiseEvent ItemSelectionChanged(Me, New ListItemSelectionChangedEventArgs(SenderItem, e))
         End Sub
-        Public ReadOnly Property Items As List(Of ItemType)
+        Public ReadOnly Property Items As List(Of TItem)
             Get
                 Return varItems
             End Get
         End Property
-        Public ReadOnly Property Item(ByVal Index As Integer) As ItemType
+        Public ReadOnly Property Item(ByVal Index As Integer) As TItem
             Get
                 Return varItems(Index)
             End Get
@@ -5439,7 +5460,7 @@ Public Module UserInterface
             MyBase.OnMouseUp(e)
             ScrollHandle.StopDrag()
         End Sub
-        Protected Class ScrollHandleControl(Of ParentType As ScrollableList(Of ItemType))
+        Protected Class ScrollHandleControl(Of TParent As ScrollableList(Of TItem))
             Inherits PictureBox
             Private varScrollValue As Double = 0
             Private Drag As Boolean
@@ -5450,6 +5471,10 @@ Public Module UserInterface
             Private FillBrush As New SolidBrush(Color.White)
             Public Event ScrollValueChanged(Sender As Object, e As HandleScrollEventArgs)
             Public Event AutoAdjusted(Sender As Object, e As EventArgs)
+            Protected Overrides Sub Dispose(disposing As Boolean)
+                FillBrush.Dispose()
+                MyBase.Dispose(disposing)
+            End Sub
             Public Property RoundedEnds As Boolean
                 Get
                     Return varRoundedEnds
@@ -5479,11 +5504,11 @@ Public Module UserInterface
                 ResizeRedraw = True
                 Size = New Size(17, 50)
             End Sub
-            Public Shadows Property Parent As ParentType
+            Public Shadows Property Parent As TParent
                 Get
-                    Return DirectCast(MyBase.Parent, ParentType)
+                    Return DirectCast(MyBase.Parent, TParent)
                 End Get
-                Set(value As ParentType)
+                Set(value As TParent)
                     MyBase.Parent = value
                     AutoAdjust()
                 End Set
@@ -5564,7 +5589,15 @@ Public Module UserInterface
         End Class
         Protected Class HandleScrollEventArgs
             Inherits EventArgs
-            Public ScrollValue As Double
+            Public varScrollValue As Double
+            Public Property ScrollValue As Double
+                Get
+                    Return varScrollValue
+                End Get
+                Set(value As Double)
+                    varScrolLValue = value
+                End Set
+            End Property
             Public Sub New(ByVal ScrollValue As Double)
                 Me.ScrollValue = ScrollValue
             End Sub
@@ -5710,6 +5743,15 @@ Public Module UserInterface
                 Return varHeaderControls
             End Get
         End Property
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            FillBrush.Dispose()
+            For Each Item As ContainerHeaderControl In varHeaderControls
+                Item.Dispose()
+            Next
+            varFont.Dispose()
+            If InnerControl IsNot Nothing Then InnerControl.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
         Public Sub AddHeaderControl(NormalHoverPressImages() As Image, ClickAction As Action(Of Object, MouseEventArgs))
             Dim HeaderRect As Rectangle = GetHeaderRectangle()
             Dim NewControl As New ContainerHeaderControl(Me, NormalHoverPressImages, ClickAction)
@@ -5897,9 +5939,9 @@ Public Module UserInterface
     Public MustInherit Class ScrollableListItem
         Inherits PictureBox
         Private varValue As ScrollableListItemValue = ScrollableListItemValue.Empty
-        Protected DefaultHeight As Integer = 30
-        Protected varIsActive, varHovering, varIsSelected As Boolean
-        Protected varItemIndex As Integer
+        Private varDefaultHeight As Integer = 30
+        Private varIsActive, varHovering, varIsSelected As Boolean
+        Private varItemIndex As Integer
         Private varUseCompatibleTextRendering As Boolean = True
         Public Event ActiveChanged(Sender As Object, e As ItemActiveEventArgs)
         Public Event SelectedChanged(Sender As Object, e As ItemSelectedEventArgs)
@@ -5907,7 +5949,7 @@ Public Module UserInterface
         Public Event ValueChanged(Sender As Object, e As ValueChangedEventArgs)
         Public MustOverride ReadOnly Property DefaultValue As ScrollableListItemValue
         Public MustOverride Sub ApplyArguments(Arguments As Object)
-        Public Sub New()
+        Protected Sub New()
             varValue = DefaultValue
         End Sub
         Public Property UseCompatibleTextRendering As Boolean
@@ -5917,6 +5959,14 @@ Public Module UserInterface
             Set(value As Boolean)
                 varUseCompatibleTextRendering = value
                 Invalidate()
+            End Set
+        End Property
+        Protected Property DefaultHeight As Integer
+            Get
+                Return varDefaultHeight
+            End Get
+            Set(value As Integer)
+                varDefaultHeight = value
             End Set
         End Property
         Public Property Value As ScrollableListItemValue
@@ -6083,16 +6133,16 @@ Public Module UserInterface
             End Get
         End Property
     End Class
-    Public Class PropertyValueInfo
-        Inherits ScrollableListItemValue
-        Private varTitle, varContent, varInfo As String
-        Public Sub New(ByVal Title As String, ByVal Content As String, ByVal Info As String, Optional Data As Object = Nothing)
-            MyBase.New(Data)
-            varTitle = Title
-            varContent = Content
-            varInfo = Info
-        End Sub
-    End Class
+    'Public Class PropertyValueInfo
+    '    Inherits ScrollableListItemValue
+    '    Private varTitle, varContent, varInfo As String
+    '    Public Sub New(ByVal Title As String, ByVal Content As String, ByVal Info As String, Optional Data As Object = Nothing)
+    '        MyBase.New(Data)
+    '        varTitle = Title
+    '        varContent = Content
+    '        varInfo = Info
+    '    End Sub
+    'End Class
     Public Class ScrollableListLabelValue
         Inherits ScrollableListItemValue
         Private varText As String
@@ -6122,6 +6172,11 @@ Public Module UserInterface
         Private CircleSize As New Size(8, 8)
         Private CircleRect As Rectangle
         Private TextSize As Size
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            LinePen.Dispose()
+            ActiveBrush.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
         Public Sub New()
             LinePen.DashStyle = Drawing2D.DashStyle.Dot
             Size = New Size(10, DefaultHeight)
@@ -6188,10 +6243,14 @@ Public Module UserInterface
             With e.Graphics
                 ActiveBrush.Color = Color.White
                 If IsSelected Then
-                    .FillPath(ActiveBrush, GetArrowPath(New Point(Width - 15, 8)))
+                    Using ArrowPath As Drawing2D.GraphicsPath = GetArrowPath(New Point(Width - 15, 8))
+                        .FillPath(ActiveBrush, ArrowPath)
+                    End Using
                 ElseIf Hovering Then
                     ActiveBrush.Color = varDarkColor
-                    .FillPath(ActiveBrush, GetArrowPath(New Point(Width - 15, 8)))
+                    Using ArrowPath As Drawing2D.GraphicsPath = GetArrowPath(New Point(Width - 15, 8))
+                        .FillPath(ActiveBrush, ArrowPath)
+                    End Using
                 End If
                 If Not IsActive Then
                     ActiveBrush.Color = varDarkColor
@@ -6226,7 +6285,7 @@ Public Module UserInterface
         Private Shared AllViewImagesHover() As Image = {My.Resources.OverviewIconDefault, My.Resources.Templates, My.Resources.calendar, My.Resources.Routines, My.Resources.Tasks}
         Private Shared SeparatorImage As Image = My.Resources.HeaderViewSeparator
         Private Shared ImageSize As New Size(32, 32)
-        Private varCurrentDirectory() As Views = {Views.Overview}
+        Private varCurrentDirectory() As ApplicationView = {ApplicationView.Overview}
         Private varHoveredIndex As Integer = -1
         Private varViewSpacing As Integer = 5
         Private ExitRect, MinimizeRect As Rectangle
@@ -6247,11 +6306,11 @@ Public Module UserInterface
                 Return AllViewImages
             End Get
         End Property
-        Public Property CurrentDirectiry As Views()
+        Public Property CurrentDirectory As ApplicationView()
             Get
                 Return varCurrentDirectory
             End Get
-            Set(value As Views())
+            Set(value As ApplicationView())
                 varCurrentDirectory = value
                 Invalidate()
             End Set
@@ -6297,7 +6356,7 @@ Public Module UserInterface
             MyBase.OnMouseUp(e)
             Focus()
             If HoveredIndex <> -1 Then
-                RaiseEvent ViewClicked(Me, New HeaderViewEventArgs(CurrentDirectiry, CurrentDirectiry(HoveredIndex)))
+                RaiseEvent ViewClicked(Me, New HeaderViewEventArgs(CurrentDirectory, CurrentDirectory(HoveredIndex)))
             ElseIf FormatConverter.PointIsInRectangle(e.Location, MinimizeRect) Then
                 RaiseEvent MinimizeClicked(Me, e)
             ElseIf FormatConverter.PointIsInRectangle(e.Location, ExitRect) Then
@@ -6309,7 +6368,7 @@ Public Module UserInterface
             With pe.Graphics
                 .SmoothingMode = Drawing2D.SmoothingMode.None
                 .FillRectangle(ApplicationGradientBrush, ClientRectangle)
-                Dim iLast As Integer = CurrentDirectiry.Count - 1
+                Dim iLast As Integer = CurrentDirectory.Count - 1
                 If iLast >= 0 Then
                     Dim SeparatorSize As Size = SeparatorImage.Size
                     Dim ImageTop As Integer = (Height - ImageSize.Height) \ 2
@@ -6330,7 +6389,7 @@ Public Module UserInterface
                 .DrawImage(My.Resources.Minimize, MinimizeRect.Location)
             End With
         End Sub
-        Public Enum Views As Integer
+        Public Enum ApplicationView As Integer
             Invalid = -1
             Overview = 0
             TemplateBrowser = 1
@@ -6341,27 +6400,27 @@ Public Module UserInterface
     End Class
     Public Class HeaderViewEventArgs
         Inherits EventArgs
-        Private varClickTarget, varCurrentDirectory() As HeaderControl.Views
-        Public Sub New(ByVal CurrentDirectory As HeaderControl.Views(), ByVal ClickTarget As HeaderControl.Views)
+        Private varClickTarget, varCurrentDirectory() As HeaderControl.ApplicationView
+        Public Sub New(ByVal CurrentDirectory As HeaderControl.ApplicationView(), ByVal ClickTarget As HeaderControl.ApplicationView)
             varCurrentDirectory = CurrentDirectory
             Me.ClickTarget = ClickTarget
         End Sub
-        Public ReadOnly Property CurrentDirectory As HeaderControl.Views()
+        Public ReadOnly Property CurrentDirectory As HeaderControl.ApplicationView()
             Get
                 Return varCurrentDirectory
             End Get
         End Property
-        Public Property ClickTarget As HeaderControl.Views
+        Public Property ClickTarget As HeaderControl.ApplicationView
             Get
                 Return varClickTarget
             End Get
-            Set(value As HeaderControl.Views)
+            Set(value As HeaderControl.ApplicationView)
                 varClickTarget = value
             End Set
         End Property
     End Class
 #Region "MultiTabWindow"
-    Public NotInheritable Class MultiTabWindow
+    Public NotInheritable Class MultitabWindow
         Inherits Panel
 #Region "Fields"
         Private TabList As List(Of Tab)
@@ -6370,9 +6429,9 @@ Public Module UserInterface
         Private ScaleXY() As Boolean = {True, False}
 #End Region
 #Region "Events"
-        Public Event TabChanged(Sender As MultiTabWindow)
-        Public Event TabCountChanged(Sender As MultiTabWindow)
-        Public Event TabResized(Sender As MultiTabWindow, Tab As Tab)
+        Public Event TabChanged(Sender As MultitabWindow)
+        Public Event TabCountChanged(Sender As MultitabWindow)
+        Public Event TabResized(Sender As MultitabWindow, Tab As Tab)
 #End Region
 #Region "Public properties"
         Public Overloads Property ScaleTabsToSize As Boolean()
@@ -6526,6 +6585,12 @@ Public Module UserInterface
         Public Sub ShowTab(ByVal Index As Integer)
             Me.Index = Index
         End Sub
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            For Each T As Tab In Tabs
+                If T IsNot Nothing Then T.Dispose()
+            Next
+            MyBase.Dispose(disposing)
+        End Sub
 #End Region
 #Region "Private methods"
         Private Sub OnParentResize(Sender As Object, e As EventArgs)
@@ -6674,7 +6739,7 @@ Public Module UserInterface
         ''' <param name="Dispose">Specifies whether or not to automatically release the resources used by this Tab after closing.</param>
         Public Sub Close(Optional Dispose As Boolean = True)
             Dim Args As New TabClosingEventArgs(False, Dispose)
-            OnClosing(New TabClosingEventArgs)
+            OnClosing(Args)
         End Sub
         ''' <summary>
         ''' Raises the TabClosing event and calls the OnClosed method unless canceled.
@@ -6754,7 +6819,7 @@ Public Module UserInterface
             End With
         End Sub
     End Class
-    Public Class ComponentPickerItemsListItem(Of InformationType As {New, ChildComponentInformation})
+    Public Class ComponentPickerItemsListItem(Of TInformation As {New, ChildComponentInformation})
         Inherits ScrollableListItem
         Private varForeColor As Color = Color.White
         Private varPaddingLeft As Integer = 30
@@ -6762,52 +6827,58 @@ Public Module UserInterface
         Private varCheckBoxSize As New Size(15, 15)
         Private CheckPath As New Drawing2D.GraphicsPath
         Private GradientBrush As Drawing2D.LinearGradientBrush
-        Public Sub New(Information As InformationType)
-            Initialize(DirectCast(Information.CopyUnknown, InformationType))
+        Public Sub New(Information As TInformation)
+            Initialize(DirectCast(Information.CopyUnknown, TInformation))
         End Sub
         Public Sub New()
             Throw New Exception("The parameterless constructor cannot be used with this class.")
             Initialize(Nothing)
         End Sub
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            FillBrush.Dispose()
+            CheckPath.Dispose()
+            GradientBrush.Dispose()
+            MyBase.Dispose(disposing)
+        End Sub
         Private Function GetCheckBoxRectangle() As Rectangle
             Dim Margin As Integer = (Height - varCheckBoxSize.Height) \ 2
             Return New Rectangle(New Point(Margin, Margin), varCheckBoxSize)
         End Function
-        Private Sub Initialize(Information As InformationType)
+        Private Sub Initialize(Information As TInformation)
             Dim OffsetPathX As Integer = 11
             Dim OffsetPathY As Integer = 12
             CheckPath.AddPolygon(New Point() {New Point(0 + OffsetPathX, 2 + OffsetPathY), New Point(1 + OffsetPathX, 1 + OffsetPathY), New Point(4 + OffsetPathX, 4 + OffsetPathY), New Point(8 + OffsetPathX, 0 + OffsetPathY), New Point(9 + OffsetPathX, 1 + OffsetPathY), New Point(4 + OffsetPathX, 6 + OffsetPathY)})
             BackColor = ColorHelper.Multiply(ApplicationBackColor, 0.9)
             Height = 31
             IsSelected = Information.Active
-            Value = New ComponentPickerItemsListItemValue(Of InformationType)(Information, Nothing)
+            Value = New ComponentPickerItemsListItemValue(Of TInformation)(Information, Nothing)
         End Sub
         Protected Overrides Sub OnSizeChanged(e As EventArgs)
             MyBase.OnSizeChanged(e)
             If GradientBrush IsNot Nothing Then GradientBrush.Dispose()
             GradientBrush = New Drawing2D.LinearGradientBrush(Point.Empty, New Point(Width, Height), BackColor, Color.FromArgb(28, 127, 171))
         End Sub
-        Public Property Information As InformationType
+        Public Property Information As TInformation
             Get
                 Return Value.Information
             End Get
-            Set(value As InformationType)
+            Set(value As TInformation)
                 Me.Value.Information = value
                 OnValueChanged(New ValueChangedEventArgs(Me.Value))
             End Set
         End Property
-        Public Shadows Property Value As ComponentPickerItemsListItemValue(Of InformationType)
+        Public Shadows Property Value As ComponentPickerItemsListItemValue(Of TInformation)
             Get
-                Return DirectCast(MyBase.Value, ComponentPickerItemsListItemValue(Of InformationType))
+                Return DirectCast(MyBase.Value, ComponentPickerItemsListItemValue(Of TInformation))
             End Get
-            Set(value As ComponentPickerItemsListItemValue(Of InformationType))
+            Set(value As ComponentPickerItemsListItemValue(Of TInformation))
                 MyBase.Value = value
             End Set
         End Property
         Public Overrides ReadOnly Property DefaultValue As ScrollableListItemValue
             Get
-                Dim NewInformation As New InformationType With {.Name = "Empty", .Active = False}
-                Return New ComponentPickerItemsListItemValue(Of InformationType)(NewInformation, Nothing)
+                Dim NewInformation As New TInformation With {.Name = "Empty", .Active = False}
+                Return New ComponentPickerItemsListItemValue(Of TInformation)(NewInformation, Nothing)
             End Get
         End Property
         Protected Overrides Sub OnMouseUp(e As MouseEventArgs)
@@ -6844,23 +6915,23 @@ Public Module UserInterface
         End Function
 
     End Class
-    Public Class ComponentPickerItemsListItemValue(Of InformationType As ChildComponentInformation)
+    Public Class ComponentPickerItemsListItemValue(Of TInformation As ChildComponentInformation)
         Inherits ScrollableListItemValue
-        Private varInformation As InformationType
-        Public Sub New(Information As InformationType, Optional Data As Object = Nothing)
+        Private varInformation As TInformation
+        Public Sub New(Information As TInformation, Optional Data As Object = Nothing)
             MyBase.New(Data)
             varInformation = Information
         End Sub
-        Public Property Information As InformationType
+        Public Property Information As TInformation
             Get
                 Return varInformation
             End Get
-            Set(value As InformationType)
+            Set(value As TInformation)
                 varInformation = value
             End Set
         End Property
     End Class
-    Public MustInherit Class ComponentPicker(Of InformationType As {New, ChildComponentInformation})
+    Public MustInherit Class ComponentPicker(Of TInformation As {New, ChildComponentInformation})
         Inherits AutoSizedContainer
         Protected WithEvents DirectoryBox As New PictureBox
         Protected varBaseDirectory As String = "Base directory"
@@ -6871,20 +6942,26 @@ Public Module UserInterface
         Public Event CancelClicked(Sender As Object, e As EventArgs)
         Private varAddText As String = "Add 0 components"
         Private varCancelText As String = "Cancel"
-        Protected varSelectedItems As New Dictionary(Of String, InformationType)
+        Protected varSelectedItems As New Dictionary(Of String, TInformation)
         Protected AddRect, CancelRect As Rectangle
         Private ButtonFont As Font = RalewayFonts.GetFont(RalewayFontCollection.FontVariant.Regular, 9.5, FontStyle.Regular)
         Private varHoveredItem As ActiveControl = ActiveControl.Nothing
         Private varAddCancelSpacing As Integer = 10
 
         'Protected WithEvents varItems As New BrowseForSchedulesList ' TODO: Make 
-        Protected WithEvents varItems As New ComponentPickerItemsList(Of InformationType)
+        Protected WithEvents varItems As New ComponentPickerItemsList(Of TInformation)
         Protected WithEvents varCategories As New CategoryList
         Protected MustOverride ReadOnly Property ItemName As String
         Protected MustOverride Function GetCategories() As String()
         Protected MustOverride Function GetItemsInCategory(ByVal Category As String) As IEnumerable(Of ComponentEntry)
-        Public Sub New()
+        Protected Sub New()
             Initialize()
+        End Sub
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            DirectoryBox.Dispose()
+            varItems.Dispose()
+            varCategories.Dispose()
+            MyBase.Dispose(disposing)
         End Sub
         Public Property BaseDirectory As String
             Get
@@ -6938,8 +7015,8 @@ Public Module UserInterface
                     Dim ItemIsSelected As Boolean = False
                     Dim ContainsKey As Boolean = varSelectedItems.ContainsKey(Item.Name)
                     If ContainsKey Then ItemIsSelected = varSelectedItems(Item.Name).Active
-                    Dim NewInformation As New InformationType With {.Name = Item.Name, .Active = ItemIsSelected}
-                    varItems.Add(New ComponentPickerItemsListItem(Of InformationType)(NewInformation))
+                    Dim NewInformation As New TInformation With {.Name = Item.Name, .Active = ItemIsSelected}
+                    varItems.Add(New ComponentPickerItemsListItem(Of TInformation)(NewInformation))
                 Next
                 varCategories.Hide()
                 varItems.Show()
@@ -6997,7 +7074,7 @@ Public Module UserInterface
             SetDirectory(DirectCast(e.SenderItem, CategoryListItem).Value.CategoryName)
         End Sub
         Private Sub Items_SelectedChanged(Sender As Object, e As ListItemSelectionChangedEventArgs) Handles varItems.ItemSelectionChanged
-            Dim SenderItem As ComponentPickerItemsListItem(Of InformationType) = DirectCast(e.SenderItem, ComponentPickerItemsListItem(Of InformationType))
+            Dim SenderItem As ComponentPickerItemsListItem(Of TInformation) = DirectCast(e.SenderItem, ComponentPickerItemsListItem(Of TInformation))
             If SenderItem.IsSelected Then
                 varSelectedItems.Add(SenderItem.Information.Name, SenderItem.Information)
             Else
@@ -7019,7 +7096,7 @@ Public Module UserInterface
         Protected Overrides Sub OnClick(e As EventArgs)
             MyBase.OnClick(e)
             If FormatConverter.PointIsInRectangle(PointToClient(MousePosition), AddRect) Then
-                Dim SelectedItems As New List(Of InformationType)
+                Dim SelectedItems As New List(Of TInformation)
                 With varSelectedItems
                     Dim iLast As Integer = .Values.Count - 1
                     If iLast >= 0 Then
@@ -7153,6 +7230,7 @@ Public Module UserInterface
         End Function
     End Class
     Public Class CategoryEditedEventArgs
+        Inherits EventArgs
         Private varCategoryItem As CategoryListItem
         Private varTrigger As CategoryEditEventArgs
         Public Sub New(CategoryItem As CategoryListItem, Trigger As CategoryEditEventArgs)
@@ -7171,6 +7249,7 @@ Public Module UserInterface
         End Property
     End Class
     Public Class CategoryDeletedEventArgs
+        Inherits EventArgs
         Private varCategoryItem As CategoryListItem
         Public Sub New(CategoryItem As CategoryListItem)
             varCategoryItem = CategoryItem
@@ -7182,6 +7261,7 @@ Public Module UserInterface
         End Property
     End Class
     Public Class CategoryDroppedEventArgs
+        Inherits EventArgs
         Public Trigger As DragEventArgs
         Public TargetItem As CategoryListItem
         Public Sub New(Trigger As DragEventArgs, TargetItem As CategoryListItem)
@@ -7247,7 +7327,7 @@ Public Module UserInterface
         Private HoverGradientBrush As Drawing2D.LinearGradientBrush
         Private varIsEditing As Boolean
         Private EditBackColor As Color = ColorHelper.Multiply(ApplicationBackColor, 0.9)
-        Private varBaseDirectory As String
+        'Private varBaseDirectory As String
         Private DeleteRect As Rectangle
         Private DeleteImages() As Image = {My.Resources.DeleteIconDefault, My.Resources.DeleteIconHover}
         Private CurrentDeleteImage As Image = DeleteImages(0)
@@ -7291,11 +7371,11 @@ Public Module UserInterface
             Hovering = True
             'Parent.ReportDragEvent(Me, e)
         End Sub
-        Protected Overrides Sub OnDragDrop(e As DragEventArgs)
-            MyBase.OnDragDrop(e)
-            If (e.Data.GetDataPresent(DataFormats.Text)) Then
+        Protected Overrides Sub OnDragDrop(drgevent As DragEventArgs)
+            MyBase.OnDragDrop(drgevent)
+            If (drgevent.Data.GetDataPresent(DataFormats.Text)) Then
                 Hovering = False
-                RaiseEvent CategoryDropped(Me, e)
+                RaiseEvent CategoryDropped(Me, drgevent)
             End If
             'Parent.ReportDragEvent(Me, e)
         End Sub
@@ -7522,9 +7602,9 @@ Public Module UserInterface
             varName = CategoryName
         End Sub
     End Class
-    Public MustInherit Class ItemsInCategoryList(Of ItemType As {New, ItemsInCategoryListItem})
-        Inherits ScrollableList(Of ItemType)
-        Public Sub New()
+    Public MustInherit Class ItemsInCategoryList(Of TItem As {New, ItemsInCategoryListItem})
+        Inherits ScrollableList(Of TItem)
+        Protected Sub New()
         End Sub
     End Class
     Public MustInherit Class ItemsInCategoryListItem
@@ -7535,11 +7615,16 @@ Public Module UserInterface
         Private varDarkColor As Color = ColorHelper.Multiply(ApplicationBackColor, 0.8)
         Private Shared varFont As Font = RalewayFonts.GetFont(RalewayFontCollection.FontVariant.Light, 10, FontStyle.Regular)
         'Private GradientBrush As Drawing2D.LinearGradientBrush
-        Public Sub New()
+        Protected Sub New()
             Initialize(DirectCast(DefaultValue, ItemsInCategoryListItemValue))
         End Sub
-        Public Sub New(Value As ItemsInCategoryListItemValue)
+        Protected Sub New(Value As ItemsInCategoryListItemValue)
             Initialize(Value)
+        End Sub
+        Protected Overrides Sub Dispose(disposing As Boolean)
+            LinePen.Dispose()
+            ActiveBrush.Dispose()
+            MyBase.Dispose(disposing)
         End Sub
         Private Sub Initialize(Value As ItemsInCategoryListItemValue)
             Me.Value = Value
@@ -7606,10 +7691,14 @@ Public Module UserInterface
                 '.FillRectangle(GradientBrush, ClientRectangle)
                 ActiveBrush.Color = Color.White
                 If IsSelected Then
-                    .FillPath(ActiveBrush, GetArrowPath(New Point(Width - 15, 8)))
+                    Using ArrowPath As Drawing2D.GraphicsPath = GetArrowPath(New Point(Width - 15, 8))
+                        .FillPath(ActiveBrush, ArrowPath)
+                    End Using
                 ElseIf Hovering Then
                     ActiveBrush.Color = varDarkColor
-                    .FillPath(ActiveBrush, GetArrowPath(New Point(Width - 15, 8)))
+                    Using ArrowPath As Drawing2D.GraphicsPath = GetArrowPath(New Point(Width - 15, 8))
+                        .FillPath(ActiveBrush, ArrowPath)
+                    End Using
                 End If
                 .TextRenderingHint = Drawing.Text.TextRenderingHint.SystemDefault
                 .DrawLine(LinePen, New Point(0, Height - 1), New Point(Width, Height - 1))

@@ -41,7 +41,7 @@
     </NoWarn>
     <UseVSHostingProcess>true</UseVSHostingProcess>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
-    <CodeAnalysisRuleSet>D:\Magnus\Documents\New Custom Visual Studio Rule Set.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -102,7 +102,6 @@
   <ItemGroup>
     <Compile Include="ApplicationEvents.vb" />
     <Compile Include="Components.vb" />
-    <Compile Include="ComponentsNew.vb" />
     <Compile Include="Dashboard.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -289,6 +288,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Tasks.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\SetActiveDefault.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\SetActiveHover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\SetActivePress.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>

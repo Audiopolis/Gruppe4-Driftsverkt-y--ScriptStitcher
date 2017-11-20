@@ -36,12 +36,15 @@ Public Class Dashboard
             .BringToFront()
         End With
         AddHeaderEventHandlers()
+        AddHandler Loader.AllTemplatesLoaded, AddressOf Loader_AllTemplatesLoaded
         Loader.LoadAll()
-
         'TestTask.Execute(New String() {"Første!!", "Andre!!"})
         'Dim TempList As TemplateList = ComponentFileReader.CreateTemplateList()
         'Dim Test As Template = ComponentFileReader.CreateTemplate("SomeTemplate")
         'MsgBox(Test.varScheduleList.Items.Count)
+    End Sub
+    Private Sub Loader_AllTemplatesLoaded(e As EventArgs)
+        LoadActiveTemplate()
     End Sub
     Protected Overrides Sub OnSizeChanged(e As EventArgs)
         MyBase.OnSizeChanged(e)
@@ -58,19 +61,19 @@ Public Class Dashboard
         End Set
     End Property
     Private Sub Header_ViewClicked(Sender As Object, e As HeaderViewEventArgs)
-        Dim CurrentView As HeaderControl.Views = e.CurrentDirectory.Last
+        Dim CurrentView As HeaderControl.ApplicationView = e.CurrentDirectory.Last
         If Not e.ClickTarget = CurrentView Then
             Dim SwitchView As Boolean = True
             Select Case CurrentView
-                Case HeaderControl.Views.Overview
+                Case HeaderControl.ApplicationView.Overview
                     ' Nowhere to go
-                Case HeaderControl.Views.TemplateBrowser
+                Case HeaderControl.ApplicationView.TemplateBrowser
                     SwitchView = TemplatesTab.VerifyViewerDiscard
-                Case HeaderControl.Views.ScheduleBrowser
+                Case HeaderControl.ApplicationView.ScheduleBrowser
                     SwitchView = SchedulesTab.VerifyViewerDiscard
-                Case HeaderControl.Views.RoutineBrowser
+                Case HeaderControl.ApplicationView.RoutineBrowser
                     SwitchView = RoutinesTab.VerifyViewerDiscard
-                Case HeaderControl.Views.TaskBrowser
+                Case HeaderControl.ApplicationView.TaskBrowser
                     SwitchView = TasksTab.VerifyViewerDiscard
                 Case Else ' Invalid
                     Throw New Exception("Invalid CurrentDirectory")
@@ -80,7 +83,7 @@ Public Class Dashboard
             End If
         End If
     End Sub
-    Private Sub ShowView(ByVal View As HeaderControl.Views)
+    Private Sub ShowView(ByVal View As HeaderControl.ApplicationView)
         'Select Case View
         'Case HeaderControl.Views.Overview
         WindowControl.ShowTab(View)
