@@ -2,12 +2,12 @@
 Option Explicit On
 Option Infer Off
 Imports System.IO
-Imports G4_Driftsverktøy
+Imports ScriptStitcher
 'Imports AudiopoLib
 'Imports G4_Driftsverktøy
 'Imports System.Reflection
 Public Module Components
-    Public Const ApplicationPath As String = "C:\Users\Magnus\Desktop\Prosjekt\Mappestruktur"
+    Public ApplicationPath As String = Application.StartupPath
     Public Interface IListElementFontProvider
         Property StaticLabelFont(ByVal FontSize As ListElementFontSize) As Font
         Property StatusLabelFont(ByVal FontSize As ListElementFontSize) As Font
@@ -581,7 +581,7 @@ Public Module Components
         Private varName, varCategoryName, varDescription As String
         ' Configuration:
         'Private ChangeCategoryTo As String
-        Protected Const DataFolderPath As String = "C:\Users\Magnus\Desktop\Prosjekt\Mappestruktur\Data" ' TODO: Get from startup path
+        Protected Shared DataFolderPath As String = ApplicationPath & "\Data" ' TODO: Get from startup path
         Public Property Name As String
             Get
                 Return varName
@@ -1336,6 +1336,8 @@ Public Module Components
                     Return CreateDirectory(Pairs, State)
                 Case "RenameFolder"
                     Return RenameFolder(Pairs, State)
+                Case "CreateFilesAndFolders"
+                    Return CreateFilesAndFolders(Pairs, State)
                 Case "CustomOperation"
                     Dim FunctionToRun As Func(Of Dictionary(Of String, Object), Object, FileOperationEventArgs) = DirectCast(Pairs("FunctionToRun"), Func(Of Dictionary(Of String, Object), Object, FileOperationEventArgs))
                     Return FunctionToRun.Invoke(Pairs, State)
@@ -1353,6 +1355,33 @@ Public Module Components
             varIsRunning = False
             Start()
         End Sub
+        Private Shared Function CreateFilesAndFolders(ByVal Pairs As Dictionary(Of String, Object), ByRef State As Object) As FileOperationEventArgs
+            Dim ApplicationStartupPath As String = DirectCast(Pairs("ApplicationStartupPath"), String)
+            If Not Directory.Exists(ApplicationStartupPath & "\Data") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data")
+            If Not File.Exists(ApplicationStartupPath & "\Data\Config.txt") Then
+                Dim DirectoryWithoutBackslash As String = ApplicationStartupPath & "\Data"
+                Dim PreferredNameWithExtension As String = "Config.txt"
+                Dim AutoRenameIfExists As Boolean = False
+                Dim SearchBase As String = ApplicationStartupPath & "\Data"
+                Dim WriteContent() As Byte = FormatConverter.GetBytesFromString("$template: %name%==None" & vbNewLine)
+                Dim CreateFileArgs As New Dictionary(Of String, Object)
+                With CreateFileArgs
+                    .Add("DirectoryWithoutBackslash", DirectoryWithoutBackslash)
+                    .Add("PreferredNameWithExtension", PreferredNameWithExtension)
+                    .Add("AutoRenameIfExists", AutoRenameIfExists)
+                    .Add("SearchBase", SearchBase)
+                    .Add("WriteContent", WriteContent)
+                End With
+                Dim CreateFileResult As FileOperationEventArgs = CreateFile(CreateFileArgs, Nothing)
+            End If
+            If Not Directory.Exists(ApplicationStartupPath & "\Data\Templates") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data\Templates")
+            If Not Directory.Exists(ApplicationStartupPath & "\Data\Schedules") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data\Schedules")
+            If Not Directory.Exists(ApplicationStartupPath & "\Data\Routines") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data\Routines")
+            If Not Directory.Exists(ApplicationStartupPath & "\Data\Tasks") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data\Tasks")
+            If Not Directory.Exists(ApplicationStartupPath & "\Data\Scripts") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data\Scripts")
+            If Not Directory.Exists(ApplicationStartupPath & "\Data\Garbage Bin") Then Directory.CreateDirectory(ApplicationStartupPath & "\Data\Garbage Bin")
+            Return New FileOperationEventArgs(Nothing, False, Pairs, Nothing, Nothing)
+        End Function
         Private Shared Function CreateDirectory(ByVal Pairs As Dictionary(Of String, Object), ByRef State As Object) As FileOperationEventArgs
             Dim PreferredFullPath As String = DirectCast(Pairs("Path"), String)
             Dim AutoRenameIfExists As Boolean = DirectCast(Pairs("AutoRenameIfExists"), Boolean)
@@ -1400,29 +1429,6 @@ Public Module Components
                 ElseIf Directory.Exists(IdealFullPath) Then
                     Throw New Exception("The directory already exists.")
                 End If
-                'If Directory.Exists(IdealFullPath) Then
-                'If Not AutoRenameIfExists Then
-                '    Throw New Exception("The directory already exists.")
-                'Else
-                '    Dim Result() As String = Directory.GetDirectories(ParentDirectory, PreferredName & " (*)")
-                '    Dim HighestNumber As Integer = -1
-                '    Dim iLast As Integer = Result.Count - 1
-                '    If iLast >= 0 Then
-                '        For i As Integer = 0 To iLast
-                '            Dim CurrentDirectory As String = Result(i)
-                '            Dim CurrentNumber As Integer = CInt(CurrentDirectory.Split("(".ToCharArray, StringSplitOptions.RemoveEmptyEntries).Last.Split(")".ToCharArray, StringSplitOptions.RemoveEmptyEntries).First)
-                '            If CurrentNumber > HighestNumber Then
-                '                HighestNumber = CurrentNumber
-                '            End If
-                '        Next
-                '    Else
-                '        MsgBox("An unexpected error occurred (code 1)")
-                '    End If
-                '    NewName = PreferredName & " (" & HighestNumber + 1 & ")"
-                'End If
-                'Else
-                '    NewName = PreferredName
-                'End If
                 My.Computer.FileSystem.RenameDirectory(FolderToModify, NewName)
                 Return New FileOperationEventArgs(NewName, False, Pairs, State)
             Catch ex As Exception
@@ -1534,21 +1540,15 @@ Public Module Components
             Dim IdealFullPath As String = DirectoryWithoutBackslash & "\" & PreferredNameWithExtension
             Dim OutputFilePath As String = Nothing
             Try
-                'If Not AutoRenameIfExists Then
-                '    Dim Matches() As String = My.Computer.FileSystem
-                '    Throw New Exception("The file already exists. Use the OverwriteFile operation if this is intentional.")
-                'Else
                 OutputFilePath = GetFirstAvailableFileName(IdealFullPath, SearchBase)
                 If Not AutoRenameIfExists AndAlso OutputFilePath <> IdealFullPath Then
-                    Throw New Exception("A file with this name already exists in the specified search base (" & SearchBase & ")")
+                    Throw New Exception("A file with this name already exists in the specified search base (" & SearchBase & ")Then")
                 Else
                     Using fs As FileStream = File.Create(OutputFilePath)
                         If WriteContent IsNot Nothing Then fs.Write(WriteContent, 0, WriteContent.Length)
                     End Using
                     Return New FileOperationEventArgs(OutputFilePath, False, Pairs, State)
                 End If
-                'OutputFilePath = IdealFullPath
-                'End If
             Catch ex As Exception
                 Return New FileOperationEventArgs(Nothing, True, Pairs, State, ex)
             End Try
@@ -1743,6 +1743,19 @@ Public Module Components
                 Protected Friend Sub New(ByVal OperationName As String)
                     varParameterValuePairs.Add("OperationName", OperationName)
                 End Sub
+                Public Shared Function CreateFilesAndFolders(ByVal ApplicationStartupPath As String) As FileOperation
+                    Dim Ret As New FileOperation("CreateFilesAndFolders")
+                    With Ret.ParameterValuePairs
+                        .Add("ApplicationStartupPath", ApplicationStartupPath)
+                    End With
+                    Return Ret
+                End Function
+                ''' <summary>
+                ''' Does not work yet. TODO: Extract FunctionToRun in Case "CustomOperation
+                ''' </summary>
+                ''' <param name="Arguments"></param>
+                ''' <param name="FunctionToRun"></param>
+                ''' <returns></returns>
                 Public Shared Function CustomOperation(ByVal Arguments As Object, ByVal FunctionToRun As Func(Of Dictionary(Of String, Object), Object, FileOperationEventArgs)) As FileOperation
                     Dim Ret As New FileOperation("CustomOperation")
                     With Ret.ParameterValuePairs

@@ -4,7 +4,7 @@ Option Infer Off
 Imports System.Drawing.Imaging
 Imports System.Threading
 Imports AudiopoLib
-Imports G4_Driftsverktøy
+Imports ScriptStitcher
 
 Public Module UserInterface
 
@@ -15,18 +15,12 @@ Public Module UserInterface
         Private WithEvents TasksInCategoryContainer As New AutoSizedContainer
         Private WithEvents CategoriesList As New CategoryList
         Private WithEvents TasksInSelectedCategory As New TasksInCategoryList
-        'Private NewCategory As New NewCategoryControl
         Private WithEvents Viewer As TaskViewer
-        'Private CurrentX As Integer = 0, LastX As Integer = 20
-        'Private Stage As Integer = 0
-        'Private SC As SynchronizationContext = SynchronizationContext.Current
         Private varCurrentCategoryName As String
         Private TaskNameToSelectAfterReload As String = Nothing
         Private RenameOccurred As Boolean
-        'Private WithEvents SlideTimer As New Timers.Timer(1000 / 60)
-        Public Sub New(Parent As MultiTabWindow)
+        Public Sub New(Parent As MultitabWindow)
             MyBase.New(Parent)
-            'SlideTimer.AutoReset = False
             CategoriesList.BackColor = ApplicationBackColor
             With TaskCategoriesContainer
                 .HeaderText = "task categories"
@@ -112,8 +106,6 @@ Public Module UserInterface
             Else
                 Dim TargetComponent As TaskEntry = DirectCast(e.State, TaskEntry)
                 RequestView(TargetComponent.Name)
-                'SelectCategory(TargetComponent.CategoryName)
-                'SelectTask(TargetCompon)
             End If
         End Sub
         Private Sub CategoriesList_CategoryDeleted(Sender As Object, e As CategoryDeletedEventArgs) Handles CategoriesList.CategoryDeleted
@@ -140,7 +132,6 @@ Public Module UserInterface
             Dim OriginalPath As String = DirectCast(e.Arguments("OriginalPath"), String)
             Dim NewPath As String = DirectCast(e.Arguments("NewPath"), String)
             Dim OriginalName As String = IO.Path.GetFileNameWithoutExtension(OriginalPath)
-            ' Dim NewName As String = IO.Path.GetFileNameWithoutExtension(NewPath)
             Dim CategoryName As String = FormatConverter.ExtractHighestLevelDirectory(OriginalPath, True)
             If e.ErrorOccurred Then
                 MsgBox("An unexpected error occurred (code 10).")
@@ -3490,9 +3481,16 @@ Public Module UserInterface
             Private varClickAction As Action(Of Object)
             Public ReadOnly Property Width As Integer
                 Get
-                    If varIconDefault IsNot Nothing Then Return varIconDefault.Width
-                    Throw New Exception("The width of this control is not known before a default icon is specified.")
-                    Return 0
+                    If varIconDefault IsNot Nothing Then
+                        Try
+                            Return varIconDefault.Width
+                        Catch
+                            Return 0
+                        End Try
+                    Else
+                        Throw New Exception("The width of this control is not known before a default icon is specified.")
+                        Return 0
+                    End If
                 End Get
             End Property
             Public Property ClickAction As Action(Of Object)
@@ -6766,7 +6764,7 @@ Public Module UserInterface
         ''' </summary>
         Protected Overrides Sub OnParentChanged(e As EventArgs)
             MyBase.OnParentChanged(e)
-            ClientSize = Parent.ClientSize
+            If Parent IsNot Nothing Then ClientSize = Parent.ClientSize
         End Sub
         Protected Overrides Sub Dispose(disposing As Boolean)
             MyBase.Dispose(disposing)

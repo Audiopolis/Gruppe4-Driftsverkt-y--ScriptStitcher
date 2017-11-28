@@ -12,11 +12,10 @@ Public Class Dashboard
     Implements IHeaderControlContainer
     Dim Drag As Boolean
     Dim MouseX, MouseY As Integer
-    'Dim WithEvents TestTask As New TaskExecutionInfo(True, "Testtittel", "C:\Users\Magnus\Desktop\G4Test\Test1.ps1")
     Private Sub Dashboard_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         ' VIKTIG!!!!!!!!
         ' Først må man sette ExecutionPolicy til RemoteSigned (eller bruke signaturer) PÅ x86-VERSJONEN av PowerShell.
-        WindowControl = New MultiTabWindow(Me)
+        WindowControl = New MultitabWindow(Me)
         OverviewTab = New Overview(WindowControl)
         TemplatesTab = New TemplateBrowser(WindowControl)
         SchedulesTab = New ScheduleBrowser(WindowControl)
@@ -37,11 +36,10 @@ Public Class Dashboard
         End With
         AddHeaderEventHandlers()
         AddHandler Loader.AllTemplatesLoaded, AddressOf Loader_AllTemplatesLoaded
+        AsyncFileReader.OperationsQueue.AddOperation(AsyncFileReader.OperationsQueue.FileOperation.CreateFilesAndFolders(ApplicationPath), AddressOf CreateFoldersFinished, Nothing)
+    End Sub
+    Private Sub CreateFoldersFinished(e As FileOperationEventArgs)
         Loader.LoadAll()
-        'TestTask.Execute(New String() {"Første!!", "Andre!!"})
-        'Dim TempList As TemplateList = ComponentFileReader.CreateTemplateList()
-        'Dim Test As Template = ComponentFileReader.CreateTemplate("SomeTemplate")
-        'MsgBox(Test.varScheduleList.Items.Count)
     End Sub
     Private Sub Loader_AllTemplatesLoaded(e As EventArgs)
         LoadActiveTemplate()
