@@ -32,7 +32,7 @@ Namespace My
         
         <Global.System.Diagnostics.DebuggerStepThroughAttribute()>  _
         Protected Overrides Sub OnCreateMainForm()
-            Me.MainForm = Global.G4_Driftsverktøy.Dashboard
+            Me.MainForm = Global.ScriptStitcher.Dashboard
         End Sub
     End Class
 End Namespace

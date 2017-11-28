@@ -6,9 +6,9 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{1C35121B-2558-430A-8F4F-AA6731E3FE28}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <StartupObject>G4_Driftsverktøy.My.MyApplication</StartupObject>
-    <RootNamespace>G4_Driftsverktøy</RootNamespace>
-    <AssemblyName>G4 Driftsverktøy</AssemblyName>
+    <StartupObject>ScriptStitcher.My.MyApplication</StartupObject>
+    <RootNamespace>ScriptStitcher</RootNamespace>
+    <AssemblyName>ScriptStitcher</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <MyType>WindowsForms</MyType>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
@@ -36,7 +36,7 @@
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
     <OutputPath>bin\Debug\</OutputPath>
-    <DocumentationFile>G4 Driftsverktøy.xml</DocumentationFile>
+    <DocumentationFile>ScriptStitcher.xml</DocumentationFile>
     <NoWarn>
     </NoWarn>
     <UseVSHostingProcess>true</UseVSHostingProcess>
@@ -50,7 +50,7 @@
     <DefineTrace>true</DefineTrace>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DocumentationFile>G4 Driftsverktøy.xml</DocumentationFile>
+    <DocumentationFile>ScriptStitcher.xml</DocumentationFile>
     <NoWarn>
     </NoWarn>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
@@ -66,6 +66,9 @@
   </PropertyGroup>
   <PropertyGroup>
     <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>OverviewIconDefault.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AudiopoLib">
@@ -297,6 +300,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\SetActivePress.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="OverviewIconDefault.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>
